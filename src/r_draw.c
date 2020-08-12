@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: r_draw.c 120 2005-09-22 13:13:47Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,26 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.4  2005/09/22 13:13:47  fraggle
+// Remove external statistics driver support (-statcopy):
+// nonfunctional on modern systems and never used.
+// Fix for systems where sizeof(int) != sizeof(void *)
+//
+// Revision 1.3  2005/08/06 18:37:47  fraggle
+// Fix low resolution mode
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:49  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	The actual span/column drawing functions.
@@ -23,6 +43,11 @@
 //	 e.g. inline assembly, different algorithms.
 //
 //-----------------------------------------------------------------------------
+
+
+static const char
+rcsid[] = "$Id: r_draw.c 120 2005-09-22 13:13:47Z fraggle $";
+
 
 #include "doomdef.h"
 
@@ -38,7 +63,6 @@
 // State.
 #include "doomstat.h"
 
-#include <stdint.h>
 
 // ?
 #define MAXWIDTH			1120
@@ -212,6 +236,7 @@ void R_DrawColumnLow (void)
     byte*		dest2;
     fixed_t		frac;
     fixed_t		fracstep;	 
+    int                 x;
  
     count = dc_yh - dc_yl; 
 
@@ -230,10 +255,10 @@ void R_DrawColumnLow (void)
     //	dccount++; 
 #endif 
     // Blocky mode, need to multiply by 2.
-    dc_x <<= 1;
+    x = dc_x << 1;
     
-    dest = ylookup[dc_yl] + columnofs[dc_x];
-    dest2 = ylookup[dc_yl] + columnofs[dc_x+1];
+    dest = ylookup[dc_yl] + columnofs[x];
+    dest2 = ylookup[dc_yl] + columnofs[x+1];
     
     fracstep = dc_iscale; 
     frac = dc_texturemid + (dc_yl-centery)*fracstep;
@@ -300,7 +325,6 @@ void R_DrawFuzzColumn (void)
     if (count < 0) 
 	return; 
 
-    
 #ifdef RANGECHECK 
     if ((unsigned)dc_x >= SCREENWIDTH
 	|| dc_yl < 0 || dc_yh >= SCREENHEIGHT)
@@ -309,34 +333,7 @@ void R_DrawFuzzColumn (void)
 		 dc_yl, dc_yh, dc_x);
     }
 #endif
-
-
-    // Keep till detailshift bug in blocky mode fixed,
-    //  or blocky mode removed.
-    /* WATCOM code 
-    if (detailshift)
-    {
-	if (dc_x & 1)
-	{
-	    outpw (GC_INDEX,GC_READMAP+(2<<8) ); 
-	    outp (SC_INDEX+1,12); 
-	}
-	else
-	{
-	    outpw (GC_INDEX,GC_READMAP); 
-	    outp (SC_INDEX+1,3); 
-	}
-	dest = destview + dc_yl*80 + (dc_x>>1); 
-    }
-    else
-    {
-	outpw (GC_INDEX,GC_READMAP+((dc_x&3)<<8) ); 
-	outp (SC_INDEX+1,1<<(dc_x&3)); 
-	dest = destview + dc_yl*80 + (dc_x>>2); 
-    }*/
-
     
-    // Does not work with blocky mode.
     dest = ylookup[dc_yl] + columnofs[dc_x];
 
     // Looks familiar.
@@ -363,7 +360,76 @@ void R_DrawFuzzColumn (void)
 	frac += fracstep; 
     } while (count--); 
 } 
+
+// low detail mode version
  
+void R_DrawFuzzColumnLow (void) 
+{ 
+    int			count; 
+    byte*		dest; 
+    byte*		dest2; 
+    fixed_t		frac;
+    fixed_t		fracstep;	 
+    int x;
+
+    // Adjust borders. Low... 
+    if (!dc_yl) 
+	dc_yl = 1;
+
+    // .. and high.
+    if (dc_yh == viewheight-1) 
+	dc_yh = viewheight - 2; 
+		 
+    count = dc_yh - dc_yl; 
+
+    // Zero length.
+    if (count < 0) 
+	return; 
+
+    // low detail mode, need to multiply by 2
+    
+    x = dc_x << 1;
+    
+#ifdef RANGECHECK 
+    if ((unsigned)x >= SCREENWIDTH
+	|| dc_yl < 0 || dc_yh >= SCREENHEIGHT)
+    {
+	I_Error ("R_DrawFuzzColumn: %i to %i at %i",
+		 dc_yl, dc_yh, dc_x);
+    }
+#endif
+    
+    dest = ylookup[dc_yl] + columnofs[x];
+    dest2 = ylookup[dc_yl] + columnofs[x+1];
+
+    // Looks familiar.
+    fracstep = dc_iscale; 
+    frac = dc_texturemid + (dc_yl-centery)*fracstep; 
+
+    // Looks like an attempt at dithering,
+    //  using the colormap #6 (of 0-31, a bit
+    //  brighter than average).
+    do 
+    {
+	// Lookup framebuffer, and retrieve
+	//  a pixel that is either one column
+	//  left or right of the current one.
+	// Add index from colormap to index.
+	*dest = colormaps[6*256+dest[fuzzoffset[fuzzpos]]]; 
+	*dest2 = colormaps[6*256+dest2[fuzzoffset[fuzzpos]]]; 
+
+	// Clamp table lookup index.
+	if (++fuzzpos == FUZZTABLE) 
+	    fuzzpos = 0;
+	
+	dest += SCREENWIDTH;
+	dest2 += SCREENWIDTH;
+
+	frac += fracstep; 
+    } while (count--); 
+} 
+ 
+  
   
  
 
@@ -402,26 +468,6 @@ void R_DrawTranslatedColumn (void)
 #endif 
 
 
-    // WATCOM VGA specific.
-    /* Keep for fixing.
-    if (detailshift)
-    {
-	if (dc_x & 1)
-	    outp (SC_INDEX+1,12); 
-	else
-	    outp (SC_INDEX+1,3);
-	
-	dest = destview + dc_yl*80 + (dc_x>>1); 
-    }
-    else
-    {
-	outp (SC_INDEX+1,1<<(dc_x&3)); 
-
-	dest = destview + dc_yl*80 + (dc_x>>2); 
-    }*/
-
-    
-    // FIXME. As above.
     dest = ylookup[dc_yl] + columnofs[dc_x]; 
 
     // Looks familiar.
@@ -443,6 +489,58 @@ void R_DrawTranslatedColumn (void)
     } while (count--); 
 } 
 
+void R_DrawTranslatedColumnLow (void) 
+{ 
+    int			count; 
+    byte*		dest; 
+    byte*		dest2; 
+    fixed_t		frac;
+    fixed_t		fracstep;	 
+    int                 x;
+ 
+    count = dc_yh - dc_yl; 
+    if (count < 0) 
+	return; 
+
+    // low detail, need to scale by 2
+    x = dc_x << 1;
+				 
+#ifdef RANGECHECK 
+    if ((unsigned)x >= SCREENWIDTH
+	|| dc_yl < 0
+	|| dc_yh >= SCREENHEIGHT)
+    {
+	I_Error ( "R_DrawColumn: %i to %i at %i",
+		  dc_yl, dc_yh, x);
+    }
+    
+#endif 
+
+
+    dest = ylookup[dc_yl] + columnofs[x]; 
+    dest2 = ylookup[dc_yl] + columnofs[x+1]; 
+
+    // Looks familiar.
+    fracstep = dc_iscale; 
+    frac = dc_texturemid + (dc_yl-centery)*fracstep; 
+
+    // Here we do an additional index re-mapping.
+    do 
+    {
+	// Translation tables are used
+	//  to map certain colorramps to other ones,
+	//  used with PLAY sprites.
+	// Thus the "green" ramp of the player 0 sprite
+	//  is mapped to gray, red, black/indigo. 
+	*dest = dc_colormap[dc_translation[dc_source[frac>>FRACBITS]]];
+	*dest2 = dc_colormap[dc_translation[dc_source[frac>>FRACBITS]]];
+	dest += SCREENWIDTH;
+	dest2 += SCREENWIDTH;
+	
+	frac += fracstep; 
+    } while (count--); 
+} 
+
 
 
 
@@ -457,8 +555,7 @@ void R_InitTranslationTables (void)
 {
     int		i;
 	
-    translationtables = Z_Malloc (256*3+255, PU_STATIC, 0);
-    translationtables = (byte *)(( (uintptr_t)translationtables + 255 )& ~255);
+    translationtables = Z_Malloc (256*3, PU_STATIC, 0);
     
     // translate just the 16 green colors
     for (i=0 ; i<256 ; i++)
@@ -659,6 +756,8 @@ void R_DrawSpanLow (void)
 	 
     xfrac = ds_xfrac; 
     yfrac = ds_yfrac; 
+    
+    count = (ds_x2 - ds_x1); 
 
     // Blocky mode, need to multiply by 2.
     ds_x1 <<= 1;
@@ -666,8 +765,6 @@ void R_DrawSpanLow (void)
     
     dest = ylookup[ds_y] + columnofs[ds_x1];
   
-    
-    count = ds_x2 - ds_x1; 
     do 
     { 
 	spot = ((yfrac>>(16-6))&(63*64)) + ((xfrac>>16)&63);

@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: d_net.c 302 2006-01-20 00:58:17Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,74 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.16.2.1  2006/01/20 00:58:17  fraggle
+// Remove new networking code from stable version
+//
+// Revision 1.16  2006/01/13 23:56:00  fraggle
+// Add text-mode I/O functions.
+// Use text-mode screen for the waiting screen.
+//
+// Revision 1.15  2006/01/02 21:04:10  fraggle
+// Create NET_SV_Shutdown function to shut down the server.  Call it
+// when quitting the game.  Print the IP of the server correctly when
+// connecting.
+//
+// Revision 1.14  2006/01/02 20:14:29  fraggle
+// Add a "-client" option to test connecting to a local server.
+//
+// Revision 1.13  2006/01/02 00:17:42  fraggle
+// Encapsulate the event queue code properly.  Add a D_PopEvent function
+// to read a new event from the event queue.
+//
+// Revision 1.12  2006/01/02 00:00:08  fraggle
+// Neater prefixes: NET_Client -> NET_CL_.  NET_Server -> NET_SV_.
+//
+// Revision 1.11  2006/01/01 23:54:31  fraggle
+// Client disconnect code
+//
+// Revision 1.10  2006/01/01 23:53:15  fraggle
+// Remove GS_WAITINGSTART gamestate.  This will be independent of the main
+// loop to avoid interfering with the main game code too much.
+//
+// Revision 1.9  2005/12/30 18:58:22  fraggle
+// Fix client code to correctly send reply to server on connection.
+// Add "waiting screen" while waiting for the game to start.
+// Hook in the new networking code into the main game code.
+//
+// Revision 1.8  2005/09/22 13:13:47  fraggle
+// Remove external statistics driver support (-statcopy):
+// nonfunctional on modern systems and never used.
+// Fix for systems where sizeof(int) != sizeof(void *)
+//
+// Revision 1.7  2005/09/08 22:10:40  fraggle
+// Delay calls so we don't use the entire CPU
+//
+// Revision 1.6  2005/09/04 18:44:22  fraggle
+// shut up compiler warnings
+//
+// Revision 1.5  2005/08/31 21:24:24  fraggle
+// Remove the last traces of NORMALUNIX
+//
+// Revision 1.4  2005/08/04 22:55:07  fraggle
+// Use DOOM_VERSION to define the Doom version (don't conflict with
+// automake's config.h).  Display GPL message instead of anti-piracy
+// messages.
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:50  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	DOOM Network game communication and protocol,
@@ -23,6 +91,12 @@
 //
 //-----------------------------------------------------------------------------
 
+
+static const char rcsid[] = "$Id: d_net.c 302 2006-01-20 00:58:17Z fraggle $";
+
+
+#include "d_main.h"
+#include "m_argv.h"
 #include "m_menu.h"
 #include "i_system.h"
 #include "i_video.h"
@@ -86,7 +160,9 @@ doomdata_t	reboundstore;
 //
 int NetbufferSize (void)
 {
-    return (int)&(((doomdata_t *)0)->cmds[netbuffer->numtics]); 
+    doomdata_t *dummy = NULL;
+
+    return ((byte *) &dummy->cmds[netbuffer->numtics]) - ((byte *) dummy);
 }
 
 //
@@ -100,9 +176,7 @@ unsigned NetbufferChecksum (void)
     c = 0x1234567;
 
     // FIXME -endianess?
-#ifdef NORMALUNIX
     return 0;			// byte order problems
-#endif
 
     l = (NetbufferSize () - (int)&(((doomdata_t *)0)->retransmitfrom))/4;
     for (i=0 ; i<l ; i++)
@@ -457,10 +531,9 @@ void CheckAbort (void)
 	I_StartTic (); 
 	
     I_StartTic ();
-    for ( ; eventtail != eventhead 
-	      ; eventtail = (++eventtail)&(MAXEVENTS-1) ) 
+
+    while ((ev = D_PopEvent()) != NULL)
     { 
-	ev = &events[eventtail]; 
 	if (ev->type == ev_keydown && ev->data1 == KEY_ESCAPE)
 	    I_Error ("Network game synchronization aborted.");
     } 
@@ -489,7 +562,7 @@ void D_ArbitrateNetStart (void)
 		continue;
 	    if (netbuffer->checksum & NCMD_SETUP)
 	    {
-		if (netbuffer->player != VERSION)
+		if (netbuffer->player != DOOM_VERSION)
 		    I_Error ("Different DOOM versions cannot play a net game!");
 		startskill = netbuffer->retransmitfrom & 15;
 		deathmatch = (netbuffer->retransmitfrom & 0xc0) >> 6;
@@ -518,7 +591,7 @@ void D_ArbitrateNetStart (void)
 		if (respawnparm)
 		    netbuffer->retransmitfrom |= 0x10;
 		netbuffer->starttic = startepisode * 64 + startmap;
-		netbuffer->player = VERSION;
+		netbuffer->player = DOOM_VERSION;
 		netbuffer->numtics = 0;
 		HSendPacket (i, NCMD_SETUP);
 	    }
@@ -552,7 +625,7 @@ extern	int			viewangleoffset;
 void D_CheckNetGame (void)
 {
     int             i;
-	
+
     for (i=0 ; i<MAXNETNODES ; i++)
     {
 	nodeingame[i] = false;
@@ -602,7 +675,7 @@ void D_QuitNetGame (void)
 	
     if (debugfile)
 	fclose (debugfile);
-		
+
     if (!netgame || !usergame || consoleplayer == -1 || demoplayback)
 	return;
 	
@@ -649,7 +722,7 @@ void TryRunTics (void)
     // get available tics
     NetUpdate ();
 	
-    lowtic = MAXINT;
+    lowtic = INT_MAX;
     numplaying = 0;
     for (i=0 ; i<doomcom->numnodes ; i++)
     {
@@ -712,7 +785,7 @@ void TryRunTics (void)
     while (lowtic < gametic/ticdup + counts)	
     {
 	NetUpdate ();   
-	lowtic = MAXINT;
+	lowtic = INT_MAX;
 	
 	for (i=0 ; i<doomcom->numnodes ; i++)
 	    if (nodeingame[i] && nettics[i] < lowtic)
@@ -727,6 +800,8 @@ void TryRunTics (void)
 	    M_Ticker ();
 	    return;
 	} 
+
+        I_Sleep(1);
     }
     
     // run the count * ticdup dics

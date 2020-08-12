@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: info.c 24 2005-07-23 21:42:52Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,24 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.4  2005/07/23 21:42:52  fraggle
+// Add missing null to end of sprite names list
+//
+// Revision 1.3  2005/07/23 18:56:07  fraggle
+// Remove unneccessary pragmas
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:19  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Thing frame/state LUT,
@@ -24,18 +42,20 @@
 //
 //-----------------------------------------------------------------------------
 
+static const char
+rcsid[] = "$Id: info.c 24 2005-07-23 21:42:52Z fraggle $";
+
+#include <stdlib.h>
+
 // Data.
 #include "sounds.h"
 #include "m_fixed.h"
 
-#ifdef __GNUG__
-#pragma implementation "info.h"
-#endif
 #include "info.h"
 
 #include "p_mobj.h"
 
-char *sprnames[NUMSPRITES] = {
+char *sprnames[] = {
     "TROO","SHTG","PUNG","PISG","PISF","SHTF","SHT2","CHGG","CHGF","MISG",
     "MISF","SAWG","PLSG","PLSF","BFGG","BFGF","BLUD","PUFF","BAL1","BAL2",
     "PLSS","PLSE","MISL","BFS1","BFE1","BFE2","TFOG","IFOG","PLAY","POSS",
@@ -49,7 +69,7 @@ char *sprnames[NUMSPRITES] = {
     "POL3","POL1","POL6","GOR2","GOR3","GOR4","GOR5","SMIT","COL1","COL2",
     "COL3","COL4","CAND","CBRA","COL6","TRE1","TRE2","ELEC","CEYE","FSKU",
     "COL5","TBLU","TGRN","TRED","SMBT","SMGT","SMRT","HDB1","HDB2","HDB3",
-    "HDB4","HDB5","HDB6","POB1","POB2","BRS1","TLMP","TLP2"
+    "HDB4","HDB5","HDB6","POB1","POB2","BRS1","TLMP","TLP2", NULL
 };
 
 

@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: r_main.c 45 2005-08-06 18:37:47Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,30 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.6  2005/08/06 18:37:47  fraggle
+// Fix low resolution mode
+//
+// Revision 1.5  2005/07/23 23:07:04  fraggle
+// Add back previously removed printfs as '.'s for startup progress bar
+//
+// Revision 1.4  2005/07/23 19:42:56  fraggle
+// Startup messages as in the DOS exes
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:58  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Rendering main loop and setup functions,
@@ -23,6 +47,11 @@
 //	See tables.c, too.
 //
 //-----------------------------------------------------------------------------
+
+
+static const char rcsid[] = "$Id: r_main.c 45 2005-08-06 18:37:47Z fraggle $";
+
+
 
 #include <stdlib.h>
 #include <math.h>
@@ -102,7 +131,7 @@ angle_t			xtoviewangle[SCREENWIDTH+1];
 // UNUSED.
 // The finetangentgent[angle+FINEANGLES/4] table
 // holds the fixed_t tangent values for view angles,
-// ranging from MININT to 0 to MAXINT.
+// ranging from INT_MIN to 0 to INT_MAX.
 // fixed_t		finetangent[FINEANGLES/2];
 
 // fixed_t		finesine[5*FINEANGLES/4];
@@ -705,8 +734,8 @@ void R_ExecuteSetViewSize (void)
     else
     {
 	colfunc = basecolfunc = R_DrawColumnLow;
-	fuzzcolfunc = R_DrawFuzzColumn;
-	transcolfunc = R_DrawTranslatedColumn;
+	fuzzcolfunc = R_DrawFuzzColumnLow;
+	transcolfunc = R_DrawTranslatedColumnLow;
 	spanfunc = R_DrawSpanLow;
     }
 
@@ -769,22 +798,21 @@ extern int	screenblocks;
 void R_Init (void)
 {
     R_InitData ();
-    printf ("\nR_InitData");
+    printf (".");
     R_InitPointToAngle ();
-    printf ("\nR_InitPointToAngle");
+    printf (".");
     R_InitTables ();
     // viewwidth / viewheight / detailLevel are set by the defaults
-    printf ("\nR_InitTables");
+    printf (".");
 
     R_SetViewSize (screenblocks, detailLevel);
     R_InitPlanes ();
-    printf ("\nR_InitPlanes");
+    printf (".");
     R_InitLightTables ();
-    printf ("\nR_InitLightTables");
+    printf (".");
     R_InitSkyMap ();
-    printf ("\nR_InitSkyMap");
     R_InitTranslationTables ();
-    printf ("\nR_InitTranslationsTables");
+    printf (".");
 	
     framecount = 0;
 }

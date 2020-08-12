@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: st_stuff.c 327 2006-01-22 23:47:18Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,44 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.9.2.1  2006/01/22 23:47:18  fraggle
+// Allow changing the status bar graphic lumps via dehacked
+//
+// Revision 1.9  2005/10/17 21:09:01  fraggle
+// Dehacked Misc support: Controls for the armor and armor class set when
+// using the ammo cheats.
+//
+// Revision 1.8  2005/10/17 21:02:57  fraggle
+// Dehacked Misc support: Max soulsphere, Soulsphere+Megasphere health bonus
+// values, God mode health value
+//
+// Revision 1.7  2005/10/06 19:36:41  fraggle
+// Must use the right no clipping cheat for the right game.
+//
+// Revision 1.6  2005/10/04 21:41:42  fraggle
+// Rewrite cheats code.  Add dehacked cheat replacement.
+//
+// Revision 1.5  2005/10/03 21:39:39  fraggle
+// Dehacked text substitutions
+//
+// Revision 1.4  2005/09/04 14:55:53  fraggle
+// Doom v1.9 doesnt allow cheats in nightmare mode!
+//
+// Revision 1.3  2005/08/04 01:15:10  fraggle
+// Fix clev cheat
+//
+// Revision 1.2  2005/07/23 16:44:57  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:07  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Status bar code.
@@ -23,6 +61,10 @@
 //	Does palette indicators as well (red pain/berserk, bright pickup)
 //
 //-----------------------------------------------------------------------------
+
+static const char
+rcsid[] = "$Id: st_stuff.c 327 2006-01-22 23:47:18Z fraggle $";
+
 
 #include <stdio.h>
 
@@ -32,6 +74,8 @@
 #include "m_random.h"
 #include "w_wad.h"
 
+#include "deh_main.h"
+#include "deh_misc.h"
 #include "doomdef.h"
 
 #include "g_game.h"
@@ -389,99 +433,27 @@ static int	keyboxes[3];
 // a random number per tick
 static int	st_randomnumber;  
 
-
-
-// Massive bunches of cheat shit
-//  to keep it from being easy to figure them out.
-// Yeah, right...
-unsigned char	cheat_mus_seq[] =
-{
-    0xb2, 0x26, 0xb6, 0xae, 0xea, 1, 0, 0, 0xff
-};
-
-unsigned char	cheat_choppers_seq[] =
-{
-    0xb2, 0x26, 0xe2, 0x32, 0xf6, 0x2a, 0x2a, 0xa6, 0x6a, 0xea, 0xff // id...
-};
-
-unsigned char	cheat_god_seq[] =
-{
-    0xb2, 0x26, 0x26, 0xaa, 0x26, 0xff  // iddqd
-};
-
-unsigned char	cheat_ammo_seq[] =
-{
-    0xb2, 0x26, 0xf2, 0x66, 0xa2, 0xff	// idkfa
-};
-
-unsigned char	cheat_ammonokey_seq[] =
-{
-    0xb2, 0x26, 0x66, 0xa2, 0xff	// idfa
-};
-
-
-// Smashing Pumpkins Into Samml Piles Of Putried Debris. 
-unsigned char	cheat_noclip_seq[] =
-{
-    0xb2, 0x26, 0xea, 0x2a, 0xb2,	// idspispopd
-    0xea, 0x2a, 0xf6, 0x2a, 0x26, 0xff
-};
-
-//
-unsigned char	cheat_commercial_noclip_seq[] =
-{
-    0xb2, 0x26, 0xe2, 0x36, 0xb2, 0x2a, 0xff	// idclip
-}; 
-
-
-
-unsigned char	cheat_powerup_seq[7][10] =
-{
-    { 0xb2, 0x26, 0x62, 0xa6, 0x32, 0xf6, 0x36, 0x26, 0x6e, 0xff }, 	// beholdv
-    { 0xb2, 0x26, 0x62, 0xa6, 0x32, 0xf6, 0x36, 0x26, 0xea, 0xff }, 	// beholds
-    { 0xb2, 0x26, 0x62, 0xa6, 0x32, 0xf6, 0x36, 0x26, 0xb2, 0xff }, 	// beholdi
-    { 0xb2, 0x26, 0x62, 0xa6, 0x32, 0xf6, 0x36, 0x26, 0x6a, 0xff }, 	// beholdr
-    { 0xb2, 0x26, 0x62, 0xa6, 0x32, 0xf6, 0x36, 0x26, 0xa2, 0xff }, 	// beholda
-    { 0xb2, 0x26, 0x62, 0xa6, 0x32, 0xf6, 0x36, 0x26, 0x36, 0xff }, 	// beholdl
-    { 0xb2, 0x26, 0x62, 0xa6, 0x32, 0xf6, 0x36, 0x26, 0xff }		// behold
-};
-
-
-unsigned char	cheat_clev_seq[] =
-{
-    0xb2, 0x26,  0xe2, 0x36, 0xa6, 0x6e, 1, 0, 0, 0xff	// idclev
-};
-
-
-// my position cheat
-unsigned char	cheat_mypos_seq[] =
-{
-    0xb2, 0x26, 0xb6, 0xba, 0x2a, 0xf6, 0xea, 0xff	// idmypos
-}; 
-
-
-// Now what?
-cheatseq_t	cheat_mus = { cheat_mus_seq, 0 };
-cheatseq_t	cheat_god = { cheat_god_seq, 0 };
-cheatseq_t	cheat_ammo = { cheat_ammo_seq, 0 };
-cheatseq_t	cheat_ammonokey = { cheat_ammonokey_seq, 0 };
-cheatseq_t	cheat_noclip = { cheat_noclip_seq, 0 };
-cheatseq_t	cheat_commercial_noclip = { cheat_commercial_noclip_seq, 0 };
+cheatseq_t cheat_mus = CHEAT("idmus", 2);
+cheatseq_t cheat_god = CHEAT("iddqd", 0);
+cheatseq_t cheat_ammo = CHEAT("idkfa", 0);
+cheatseq_t cheat_ammonokey = CHEAT("idfa", 0);
+cheatseq_t cheat_noclip = CHEAT("idspispopd", 0);
+cheatseq_t cheat_commercial_noclip = CHEAT("idclip", 0);
 
 cheatseq_t	cheat_powerup[7] =
 {
-    { cheat_powerup_seq[0], 0 },
-    { cheat_powerup_seq[1], 0 },
-    { cheat_powerup_seq[2], 0 },
-    { cheat_powerup_seq[3], 0 },
-    { cheat_powerup_seq[4], 0 },
-    { cheat_powerup_seq[5], 0 },
-    { cheat_powerup_seq[6], 0 }
+    CHEAT("idbeholdv", 0),
+    CHEAT("idbeholds", 0),
+    CHEAT("idbeholdi", 0),
+    CHEAT("idbeholdr", 0),
+    CHEAT("idbeholda", 0),
+    CHEAT("idbeholdl", 0),
+    CHEAT("idbehold", 0),
 };
 
-cheatseq_t	cheat_choppers = { cheat_choppers_seq, 0 };
-cheatseq_t	cheat_clev = { cheat_clev_seq, 0 };
-cheatseq_t	cheat_mypos = { cheat_mypos_seq, 0 };
+cheatseq_t cheat_choppers = CHEAT("idchoppers", 0);
+cheatseq_t cheat_clev = CHEAT("idclev", 2);
+cheatseq_t cheat_mypos = CHEAT("idmypos", 0);
 
 
 // 
@@ -537,11 +509,8 @@ ST_Responder (event_t* ev)
   // if a user keypress...
   else if (ev->type == ev_keydown)
   {
-    if (!netgame)
+    if (!netgame && gameskill != sk_nightmare)
     {
-      // b. - enabled for more debug fun.
-      // if (gameskill != sk_nightmare) {
-      
       // 'dqd' cheat for toggleable god mode
       if (cht_CheckCheat(&cheat_god, ev->data1))
       {
@@ -551,17 +520,17 @@ ST_Responder (event_t* ev)
 	  if (plyr->mo)
 	    plyr->mo->health = 100;
 	  
-	  plyr->health = 100;
-	  plyr->message = STSTR_DQDON;
+	  plyr->health = deh_god_mode_health;
+	  plyr->message = DEH_String(STSTR_DQDON);
 	}
 	else 
-	  plyr->message = STSTR_DQDOFF;
+	  plyr->message = DEH_String(STSTR_DQDOFF);
       }
       // 'fa' cheat for killer fucking arsenal
       else if (cht_CheckCheat(&cheat_ammonokey, ev->data1))
       {
-	plyr->armorpoints = 200;
-	plyr->armortype = 2;
+	plyr->armorpoints = deh_idfa_armor;
+	plyr->armortype = deh_idfa_armor_class;
 	
 	for (i=0;i<NUMWEAPONS;i++)
 	  plyr->weaponowned[i] = true;
@@ -569,13 +538,13 @@ ST_Responder (event_t* ev)
 	for (i=0;i<NUMAMMO;i++)
 	  plyr->ammo[i] = plyr->maxammo[i];
 	
-	plyr->message = STSTR_FAADDED;
+	plyr->message = DEH_String(STSTR_FAADDED);
       }
       // 'kfa' cheat for key full ammo
       else if (cht_CheckCheat(&cheat_ammo, ev->data1))
       {
-	plyr->armorpoints = 200;
-	plyr->armortype = 2;
+	plyr->armorpoints = deh_idkfa_armor;
+	plyr->armortype = deh_idkfa_armor_class;
 	
 	for (i=0;i<NUMWEAPONS;i++)
 	  plyr->weaponowned[i] = true;
@@ -586,7 +555,7 @@ ST_Responder (event_t* ev)
 	for (i=0;i<NUMCARDS;i++)
 	  plyr->cards[i] = true;
 	
-	plyr->message = STSTR_KFAADDED;
+	plyr->message = DEH_String(STSTR_KFAADDED);
       }
       // 'mus' cheat for changing music
       else if (cht_CheckCheat(&cheat_mus, ev->data1))
@@ -595,7 +564,7 @@ ST_Responder (event_t* ev)
 	char	buf[3];
 	int		musnum;
 	
-	plyr->message = STSTR_MUS;
+	plyr->message = DEH_String(STSTR_MUS);
 	cht_GetParam(&cheat_mus, buf);
 	
 	if (gamemode == commercial)
@@ -603,7 +572,7 @@ ST_Responder (event_t* ev)
 	  musnum = mus_runnin + (buf[0]-'0')*10 + buf[1]-'0' - 1;
 	  
 	  if (((buf[0]-'0')*10 + buf[1]-'0') > 35)
-	    plyr->message = STSTR_NOMUS;
+	    plyr->message = DEH_String(STSTR_NOMUS);
 	  else
 	    S_ChangeMusic(musnum, 1);
 	}
@@ -612,22 +581,26 @@ ST_Responder (event_t* ev)
 	  musnum = mus_e1m1 + (buf[0]-'1')*9 + (buf[1]-'1');
 	  
 	  if (((buf[0]-'1')*9 + buf[1]-'1') > 31)
-	    plyr->message = STSTR_NOMUS;
+	    plyr->message = DEH_String(STSTR_NOMUS);
 	  else
 	    S_ChangeMusic(musnum, 1);
 	}
       }
-      // Simplified, accepting both "noclip" and "idspispopd".
-      // no clipping mode cheat
-      else if ( cht_CheckCheat(&cheat_noclip, ev->data1) 
-		|| cht_CheckCheat(&cheat_commercial_noclip,ev->data1) )
+      else if ( (gamemission == doom 
+                 && cht_CheckCheat(&cheat_noclip, ev->data1))
+             || (gamemission != doom 
+                 && cht_CheckCheat(&cheat_commercial_noclip,ev->data1)))
       {	
+        // Noclip cheat.
+        // For Doom 1, use the idspipsopd cheat; for all others, use
+        // idclip
+
 	plyr->cheats ^= CF_NOCLIP;
 	
 	if (plyr->cheats & CF_NOCLIP)
-	  plyr->message = STSTR_NCON;
+	  plyr->message = DEH_String(STSTR_NCON);
 	else
-	  plyr->message = STSTR_NCOFF;
+	  plyr->message = DEH_String(STSTR_NCOFF);
       }
       // 'behold?' power-up cheats
       for (i=0;i<6;i++)
@@ -641,21 +614,21 @@ ST_Responder (event_t* ev)
 	  else
 	    plyr->powers[i] = 0;
 	  
-	  plyr->message = STSTR_BEHOLDX;
+	  plyr->message = DEH_String(STSTR_BEHOLDX);
 	}
       }
       
       // 'behold' power-up menu
       if (cht_CheckCheat(&cheat_powerup[6], ev->data1))
       {
-	plyr->message = STSTR_BEHOLD;
+	plyr->message = DEH_String(STSTR_BEHOLD);
       }
       // 'choppers' invulnerability & chainsaw
       else if (cht_CheckCheat(&cheat_choppers, ev->data1))
       {
 	plyr->weaponowned[wp_chainsaw] = true;
 	plyr->powers[pw_invulnerability] = true;
-	plyr->message = STSTR_CHOPPERS;
+	plyr->message = DEH_String(STSTR_CHOPPERS);
       }
       // 'mypos' for player position
       else if (cht_CheckCheat(&cheat_mypos, ev->data1))
@@ -680,7 +653,7 @@ ST_Responder (event_t* ev)
       
       if (gamemode == commercial)
       {
-	epsd = 0;
+	epsd = 1;
 	map = (buf[0] - '0')*10 + buf[1] - '0';
       }
       else
@@ -714,7 +687,7 @@ ST_Responder (event_t* ev)
 	return false;
 
       // So be it.
-      plyr->message = STSTR_CLEV;
+      plyr->message = DEH_String(STSTR_CLEV);
       G_DeferedInitNew(gameskill, epsd, map);
     }    
   }
@@ -1130,31 +1103,31 @@ void ST_loadGraphics(void)
     // Load the numbers, tall and short
     for (i=0;i<10;i++)
     {
-	sprintf(namebuf, "STTNUM%d", i);
+	sprintf(namebuf, DEH_String("STTNUM%d"), i);
 	tallnum[i] = (patch_t *) W_CacheLumpName(namebuf, PU_STATIC);
 
-	sprintf(namebuf, "STYSNUM%d", i);
+	sprintf(namebuf, DEH_String("STYSNUM%d"), i);
 	shortnum[i] = (patch_t *) W_CacheLumpName(namebuf, PU_STATIC);
     }
 
     // Load percent key.
     //Note: why not load STMINUS here, too?
-    tallpercent = (patch_t *) W_CacheLumpName("STTPRCNT", PU_STATIC);
+    tallpercent = (patch_t *) W_CacheLumpName(DEH_String("STTPRCNT"), PU_STATIC);
 
     // key cards
     for (i=0;i<NUMCARDS;i++)
     {
-	sprintf(namebuf, "STKEYS%d", i);
+	sprintf(namebuf, DEH_String("STKEYS%d"), i);
 	keys[i] = (patch_t *) W_CacheLumpName(namebuf, PU_STATIC);
     }
 
     // arms background
-    armsbg = (patch_t *) W_CacheLumpName("STARMS", PU_STATIC);
+    armsbg = (patch_t *) W_CacheLumpName(DEH_String("STARMS"), PU_STATIC);
 
     // arms ownership widgets
     for (i=0;i<6;i++)
     {
-	sprintf(namebuf, "STGNUM%d", i+2);
+	sprintf(namebuf, DEH_String("STGNUM%d"), i+2);
 
 	// gray #
 	arms[i][0] = (patch_t *) W_CacheLumpName(namebuf, PU_STATIC);
@@ -1164,11 +1137,11 @@ void ST_loadGraphics(void)
     }
 
     // face backgrounds for different color players
-    sprintf(namebuf, "STFB%d", consoleplayer);
+    sprintf(namebuf, DEH_String("STFB%d"), consoleplayer);
     faceback = (patch_t *) W_CacheLumpName(namebuf, PU_STATIC);
 
     // status bar background bits
-    sbar = (patch_t *) W_CacheLumpName("STBAR", PU_STATIC);
+    sbar = (patch_t *) W_CacheLumpName(DEH_String("STBAR"), PU_STATIC);
 
     // face states
     facenum = 0;
@@ -1176,22 +1149,22 @@ void ST_loadGraphics(void)
     {
 	for (j=0;j<ST_NUMSTRAIGHTFACES;j++)
 	{
-	    sprintf(namebuf, "STFST%d%d", i, j);
+	    sprintf(namebuf, DEH_String("STFST%d%d"), i, j);
 	    faces[facenum++] = W_CacheLumpName(namebuf, PU_STATIC);
 	}
-	sprintf(namebuf, "STFTR%d0", i);	// turn right
+	sprintf(namebuf, DEH_String("STFTR%d0"), i);	// turn right
 	faces[facenum++] = W_CacheLumpName(namebuf, PU_STATIC);
-	sprintf(namebuf, "STFTL%d0", i);	// turn left
+	sprintf(namebuf, DEH_String("STFTL%d0"), i);	// turn left
 	faces[facenum++] = W_CacheLumpName(namebuf, PU_STATIC);
-	sprintf(namebuf, "STFOUCH%d", i);	// ouch!
+	sprintf(namebuf, DEH_String("STFOUCH%d"), i);	// ouch!
 	faces[facenum++] = W_CacheLumpName(namebuf, PU_STATIC);
-	sprintf(namebuf, "STFEVL%d", i);	// evil grin ;)
+	sprintf(namebuf, DEH_String("STFEVL%d"), i);	// evil grin ;)
 	faces[facenum++] = W_CacheLumpName(namebuf, PU_STATIC);
-	sprintf(namebuf, "STFKILL%d", i);	// pissed off
+	sprintf(namebuf, DEH_String("STFKILL%d"), i);	// pissed off
 	faces[facenum++] = W_CacheLumpName(namebuf, PU_STATIC);
     }
-    faces[facenum++] = W_CacheLumpName("STFGOD0", PU_STATIC);
-    faces[facenum++] = W_CacheLumpName("STFDEAD0", PU_STATIC);
+    faces[facenum++] = W_CacheLumpName(DEH_String("STFGOD0"), PU_STATIC);
+    faces[facenum++] = W_CacheLumpName(DEH_String("STFDEAD0"), PU_STATIC);
 
 }
 

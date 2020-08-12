@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: s_sound.h 271 2006-01-08 17:51:53Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,6 +16,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
 // DESCRIPTION:
 //	The not so system specific sound interface.
 //
@@ -25,9 +31,6 @@
 #define __S_SOUND__
 
 
-#ifdef __GNUG__
-#pragma interface
-#endif
 
 
 
@@ -85,6 +88,9 @@ S_ChangeMusic
 ( int		music_id,
   int		looping );
 
+// query if music is playing
+boolean S_MusicPlaying(void);
+
 // Stops the music fer sure.
 void S_StopMusic(void);
 
@@ -105,6 +111,18 @@ void S_SetSfxVolume(int volume);
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.4  2006/01/08 17:51:53  fraggle
+// Add S_MusicPlaying function to query if music is still playing.
+//
+// Revision 1.3  2005/07/23 18:56:07  fraggle
+// Remove unneccessary pragmas
+//
+// Revision 1.2  2005/07/23 16:44:57  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:29  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: g_game.c 368 2006-02-15 12:58:27Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,17 +16,118 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.20.2.4  2006/02/15 12:58:27  fraggle
+// Remove the savegame buffer entirely.  Keep the old savegame size limit bug add a "vanilla_savegame_limit" config file option which allows
+// the limit to be disabled if necessary.
+//
+// Revision 1.20.2.3  2006/01/27 18:23:00  fraggle
+// Exit with an error when playing a demo with the wrong version, like Vanilla Doom
+//
+// Revision 1.20.2.2  2006/01/23 00:12:36  fraggle
+// Fix dehacked sky replacement
+//
+// Revision 1.20.2.1  2006/01/22 23:36:21  fraggle
+// Allow changing the sky texture names via dehacked patches
+//
+// Revision 1.20  2006/01/19 18:46:24  fraggle
+// Move savegame header read/write code into p_saveg.c
+//
+// Revision 1.19  2006/01/13 23:56:00  fraggle
+// Add text-mode I/O functions.
+// Use text-mode screen for the waiting screen.
+//
+// Revision 1.18  2006/01/01 23:53:15  fraggle
+// Remove GS_WAITINGSTART gamestate.  This will be independent of the main
+// loop to avoid interfering with the main game code too much.
+//
+// Revision 1.17  2005/12/30 18:58:22  fraggle
+// Fix client code to correctly send reply to server on connection.
+// Add "waiting screen" while waiting for the game to start.
+// Hook in the new networking code into the main game code.
+//
+// Revision 1.16  2005/10/17 20:27:05  fraggle
+// Start of Dehacked 'Misc' section support.  Initial Health+Bullets,
+// and bfg cells/shot are supported.
+//
+// Revision 1.15  2005/10/16 20:55:50  fraggle
+// Fix the '-cdrom' command-line option.
+//
+// Revision 1.14  2005/10/16 01:18:10  fraggle
+// Global "configdir" variable with directory to store config files in.
+// Create a function to find the filename for a savegame slot.  Store
+// savegames in the config dir.
+//
+// Revision 1.13  2005/10/13 23:12:30  fraggle
+// Fix Doom 1 skies
+//
+// Revision 1.12  2005/10/03 21:39:39  fraggle
+// Dehacked text substitutions
+//
+// Revision 1.11  2005/09/22 13:13:47  fraggle
+// Remove external statistics driver support (-statcopy):
+// nonfunctional on modern systems and never used.
+// Fix for systems where sizeof(int) != sizeof(void *)
+//
+// Revision 1.10  2005/09/17 20:25:56  fraggle
+// Set the default values for variables in their initialisers.  Remove the
+// "defaultvalue" parameter and associated code from the configuration
+// file parsing code.
+//
+// Revision 1.9  2005/09/11 20:25:56  fraggle
+// Second configuration file to allow chocolate doom-specific settings.
+// Adjust some existing command line logic (for graphics settings and
+// novert) to adjust for this.
+//
+// Revision 1.8  2005/09/04 18:44:23  fraggle
+// shut up compiler warnings
+//
+// Revision 1.7  2005/09/04 17:33:43  fraggle
+// Support demos recorded with cph's modified "v1.91" doom exe - which
+// contain higher resolution angleturn
+//
+// Revision 1.6  2005/09/04 15:59:45  fraggle
+// 'novert' command line option to disable vertical mouse movement
+//
+// Revision 1.5  2005/09/04 15:23:29  fraggle
+// Support the old "joyb_speed 31" hack to allow autorun
+//
+// Revision 1.4  2005/08/04 22:55:08  fraggle
+// Use DOOM_VERSION to define the Doom version (don't conflict with
+// automake's config.h).  Display GPL message instead of anti-piracy
+// messages.
+//
+// Revision 1.3  2005/08/03 22:20:09  fraggle
+// Display FPS on quit
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:11  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:  none
 //
 //-----------------------------------------------------------------------------
+
+
+static const char
+rcsid[] = "$Id: g_game.c 368 2006-02-15 12:58:27Z fraggle $";
 
 #include <string.h>
 #include <stdlib.h>
 
 #include "doomdef.h" 
 #include "doomstat.h"
+
+#include "deh_main.h"
+#include "deh_misc.h"
 
 #include "z_zone.h"
 #include "f_finale.h"
@@ -69,7 +171,6 @@
 
 
 #define SAVEGAMESIZE	0x2c000
-#define SAVESTRINGSIZE	24
 
 
 
@@ -123,6 +224,7 @@ int             totalkills, totalitems, totalsecret;    // for intermission
  
 char            demoname[32]; 
 boolean         demorecording; 
+boolean         longtics;               // cph's doom 1.91 longtics hack
 boolean         demoplayback; 
 boolean		netdemo; 
 byte*		demobuffer;
@@ -136,32 +238,36 @@ wbstartstruct_t wminfo;               	// parms for world map / intermission
  
 short		consistancy[MAXPLAYERS][BACKUPTICS]; 
  
-byte*		savebuffer;
- 
  
 // 
-// controls (have defaults) 
+// Controls 
 // 
-int             key_right;
-int		key_left;
+int             key_right = KEY_RIGHTARROW;
+int		key_left = KEY_LEFTARROW;
 
-int		key_up;
-int		key_down; 
-int             key_strafeleft;
-int		key_straferight; 
-int             key_fire;
-int		key_use;
-int		key_strafe;
-int		key_speed; 
+int		key_up = KEY_UPARROW;
+int		key_down = KEY_DOWNARROW; 
+int             key_strafeleft = ',';
+int		key_straferight = '.';
+int             key_fire = KEY_RCTRL;
+int		key_use = ' ';
+int		key_strafe = KEY_RALT;
+int		key_speed = KEY_RSHIFT; 
  
-int             mousebfire; 
-int             mousebstrafe; 
-int             mousebforward; 
+int             mousebfire = 0;
+int             mousebstrafe = 1;
+int             mousebforward = 2;
  
-int             joybfire; 
-int             joybstrafe; 
-int             joybuse; 
-int             joybspeed; 
+int             joybfire = 0; 
+int             joybstrafe = 1; 
+int             joybuse = 3; 
+int             joybspeed = 2; 
+
+// fraggle: Disallow mouse and joystick movement to cause forward/backward
+// motion.  Specified with the '-novert' command line parameter.
+// This is an int to allow saving to config file
+
+int             novert = 0;
  
  
  
@@ -209,8 +315,7 @@ char		savedescription[32];
 mobj_t*		bodyque[BODYQUESIZE]; 
 int		bodyqueslot; 
  
-void*		statcopy;				// for statistics driver
- 
+int             vanilla_savegame_limit = 1;
  
  
 int G_CmdChecksum (ticcmd_t* cmd) 
@@ -252,7 +357,14 @@ void G_BuildTiccmd (ticcmd_t* cmd)
  
     strafe = gamekeydown[key_strafe] || mousebuttons[mousebstrafe] 
 	|| joybuttons[joybstrafe]; 
-    speed = gamekeydown[key_speed] || joybuttons[joybspeed];
+
+    // fraggle: support the old "joyb_speed = 31" hack which
+    // allowed an autorun effect
+
+    speed = key_speed >= NUMKEYS
+         || joybspeed >= 4
+         || gamekeydown[key_speed] 
+         || joybuttons[joybspeed];
  
     forward = side = 0;
     
@@ -312,10 +424,15 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	// fprintf(stderr, "down\n");
 	forward -= forwardmove[speed]; 
     }
-    if (joyymove < 0) 
-	forward += forwardmove[speed]; 
-    if (joyymove > 0) 
-	forward -= forwardmove[speed]; 
+
+    // fraggle: allow disabling joystick y movement
+    if (!novert)
+    {
+        if (joyymove < 0) 
+            forward += forwardmove[speed]; 
+        if (joyymove > 0) 
+            forward -= forwardmove[speed]; 
+    }
     if (gamekeydown[key_straferight]) 
 	side += sidemove[speed]; 
     if (gamekeydown[key_strafeleft]) 
@@ -399,7 +516,13 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	} 
     } 
  
-    forward += mousey; 
+    // fraggle: allow disabling mouse y movement
+ 
+    if (!novert) 
+    {
+        forward += mousey; 
+    }
+
     if (strafe) 
 	side += mousex*2; 
     else 
@@ -441,6 +564,7 @@ extern  gamestate_t     wipegamestate;
  
 void G_DoLoadLevel (void) 
 { 
+    char *skytexturename;
     int             i; 
 
     // Set the sky map.
@@ -448,21 +572,43 @@ void G_DoLoadLevel (void)
     //  a flat. The data is in the WAD only because
     //  we look for an actual index, instead of simply
     //  setting one.
-    skyflatnum = R_FlatNumForName ( SKYFLATNAME );
+    skyflatnum = R_FlatNumForName(DEH_String(SKYFLATNAME));
 
     // DOOM determines the sky texture to be used
     // depending on the current episode, and the game version.
-    if ( (gamemode == commercial)
-	 || ( gamemode == pack_tnt )
-	 || ( gamemode == pack_plut ) )
+
+    if (gamemode == commercial)
     {
-	skytexture = R_TextureNumForName ("SKY3");
+	skytexturename = "SKY3";
 	if (gamemap < 12)
-	    skytexture = R_TextureNumForName ("SKY1");
+	    skytexturename = "SKY1";
 	else
 	    if (gamemap < 21)
-		skytexture = R_TextureNumForName ("SKY2");
+		skytexturename = "SKY2";
     }
+    else
+    {
+	switch (gameepisode) 
+	{ 
+	  default:
+	  case 1: 
+	    skytexturename = "SKY1"; 
+	    break; 
+	  case 2: 
+	    skytexturename = "SKY2"; 
+	    break; 
+	  case 3: 
+	    skytexturename = "SKY3"; 
+	    break; 
+	  case 4:	// Special Edition sky
+	    skytexturename = "SKY4";
+	    break;
+	} 
+    }
+
+    skytexturename = DEH_String(skytexturename);
+
+    skytexture = R_TextureNumForName(skytexturename);
 
     levelstarttic = gametic;        // for time calculation
     
@@ -528,7 +674,7 @@ boolean G_Responder (event_t* ev)
 	} 
 	return false; 
     } 
- 
+
     if (gamestate == GS_LEVEL) 
     { 
 #if 0 
@@ -740,7 +886,7 @@ void G_Ticker (void)
  
       case GS_DEMOSCREEN: 
 	D_PageTicker (); 
-	break; 
+	break;
     }        
 } 
  
@@ -818,11 +964,11 @@ void G_PlayerReborn (int player)
  
     p->usedown = p->attackdown = true;	// don't do anything immediately 
     p->playerstate = PST_LIVE;       
-    p->health = MAXHEALTH; 
+    p->health = deh_initial_health;     // Use dehacked value
     p->readyweapon = p->pendingweapon = wp_pistol; 
     p->weaponowned[wp_fist] = true; 
     p->weaponowned[wp_pistol] = true; 
-    p->ammo[am_clip] = 50; 
+    p->ammo[am_clip] = deh_initial_bullets; 
 	 
     for (i=0 ; i<NUMAMMO ; i++) 
 	p->maxammo[i] = maxammo[i]; 
@@ -1131,9 +1277,6 @@ void G_DoCompleted (void)
     viewactive = false; 
     automapactive = false; 
  
-    if (statcopy)
-	memcpy (statcopy, &wminfo, sizeof(wminfo));
-	
     WI_Start (&wminfo); 
 } 
 
@@ -1197,50 +1340,41 @@ void G_LoadGame (char* name)
 
 void G_DoLoadGame (void) 
 { 
-    int		length; 
-    int		i; 
-    int		a,b,c; 
-    char	vcheck[VERSIONSIZE]; 
+    int savedleveltime;
 	 
     gameaction = ga_nothing; 
 	 
-    length = M_ReadFile (savename, &savebuffer); 
-    save_p = savebuffer + SAVESTRINGSIZE;
-    
-    // skip the description field 
-    memset (vcheck,0,sizeof(vcheck)); 
-    sprintf (vcheck,"version %i",VERSION); 
-    if (strcmp (save_p, vcheck)) 
-	return;				// bad version 
-    save_p += VERSIONSIZE; 
-			 
-    gameskill = *save_p++; 
-    gameepisode = *save_p++; 
-    gamemap = *save_p++; 
-    for (i=0 ; i<MAXPLAYERS ; i++) 
-	playeringame[i] = *save_p++; 
+    save_stream = fopen(savename, "rb");
 
+    if (save_stream == NULL)
+    {
+        return;
+    }
+
+    if (!P_ReadSaveGameHeader())
+    {
+        fclose(save_stream);
+        return;
+    }
+
+    savedleveltime = leveltime;
+    
     // load a base level 
     G_InitNew (gameskill, gameepisode, gamemap); 
  
-    // get the times 
-    a = *save_p++; 
-    b = *save_p++; 
-    c = *save_p++; 
-    leveltime = (a<<16) + (b<<8) + c; 
-	 
+    leveltime = savedleveltime;
+
     // dearchive all the modifications
     P_UnArchivePlayers (); 
     P_UnArchiveWorld (); 
     P_UnArchiveThinkers (); 
     P_UnArchiveSpecials (); 
  
-    if (*save_p != 0x1d) 
+    if (!P_ReadSaveGameEOF())
 	I_Error ("Bad savegame");
+
+    fclose(save_stream);
     
-    // done 
-    Z_Free (savebuffer); 
- 
     if (setsizeneeded)
 	R_ExecuteSetViewSize ();
     
@@ -1267,50 +1401,43 @@ G_SaveGame
 void G_DoSaveGame (void) 
 { 
     char	name[100]; 
-    char	name2[VERSIONSIZE]; 
     char*	description; 
-    int		length; 
-    int		i; 
+    unsigned long length;
 	
-    if (M_CheckParm("-cdrom"))
-	sprintf(name,"c:\\doomdata\\"SAVEGAMENAME"%d.dsg",savegameslot);
-    else
-	sprintf (name,SAVEGAMENAME"%d.dsg",savegameslot); 
+    strcpy(name, P_SaveGameFile(savegameslot));
+
     description = savedescription; 
 	 
-    save_p = savebuffer = screens[1]+0x4000; 
-	 
-    memcpy (save_p, description, SAVESTRINGSIZE); 
-    save_p += SAVESTRINGSIZE; 
-    memset (name2,0,sizeof(name2)); 
-    sprintf (name2,"version %i",VERSION); 
-    memcpy (save_p, name2, VERSIONSIZE); 
-    save_p += VERSIONSIZE; 
-	 
-    *save_p++ = gameskill; 
-    *save_p++ = gameepisode; 
-    *save_p++ = gamemap; 
-    for (i=0 ; i<MAXPLAYERS ; i++) 
-	*save_p++ = playeringame[i]; 
-    *save_p++ = leveltime>>16; 
-    *save_p++ = leveltime>>8; 
-    *save_p++ = leveltime; 
+    save_stream = fopen(name, "wb");
+
+    if (save_stream == NULL)
+    {
+        return;
+    }
+
+    P_WriteSaveGameHeader(description);
  
     P_ArchivePlayers (); 
     P_ArchiveWorld (); 
     P_ArchiveThinkers (); 
     P_ArchiveSpecials (); 
 	 
-    *save_p++ = 0x1d;		// consistancy marker 
+    P_WriteSaveGameEOF();
 	 
-    length = save_p - savebuffer; 
-    if (length > SAVEGAMESIZE) 
-	I_Error ("Savegame buffer overrun"); 
-    M_WriteFile (name, savebuffer, length); 
+    // Enforce the same savegame size limit as in Vanilla Doom, 
+    // except if the vanilla_savegame_limit setting is turned off.
+
+    if (vanilla_savegame_limit && ftell(save_stream) > SAVEGAMESIZE)
+    {
+        I_Error ("Savegame buffer overrun");
+    }
+    
+    fclose(save_stream);
+
     gameaction = ga_nothing; 
-    savedescription[0] = 0;		 
+    strcpy(savedescription, "");
 	 
-    players[consoleplayer].message = GGSAVED; 
+    players[consoleplayer].message = DEH_String(GGSAVED);
 
     // draw the pattern into the back screen
     R_FillBackScreen ();	
@@ -1448,33 +1575,6 @@ G_InitNew
  
     viewactive = true;
     
-    // set the sky map for the episode
-    if ( gamemode == commercial)
-    {
-	skytexture = R_TextureNumForName ("SKY3");
-	if (gamemap < 12)
-	    skytexture = R_TextureNumForName ("SKY1");
-	else
-	    if (gamemap < 21)
-		skytexture = R_TextureNumForName ("SKY2");
-    }
-    else
-	switch (episode) 
-	{ 
-	  case 1: 
-	    skytexture = R_TextureNumForName ("SKY1"); 
-	    break; 
-	  case 2: 
-	    skytexture = R_TextureNumForName ("SKY2"); 
-	    break; 
-	  case 3: 
-	    skytexture = R_TextureNumForName ("SKY3"); 
-	    break; 
-	  case 4:	// Special Edition sky
-	    skytexture = R_TextureNumForName ("SKY4");
-	    break;
-	} 
- 
     G_DoLoadLevel (); 
 } 
  
@@ -1495,20 +1595,52 @@ void G_ReadDemoTiccmd (ticcmd_t* cmd)
     } 
     cmd->forwardmove = ((signed char)*demo_p++); 
     cmd->sidemove = ((signed char)*demo_p++); 
-    cmd->angleturn = ((unsigned char)*demo_p++)<<8; 
+
+    // If this is a longtics demo, read back in higher resolution
+
+    if (longtics)
+    {
+        cmd->angleturn = *demo_p++;
+        cmd->angleturn |= (*demo_p++) << 8;
+    }
+    else
+    {
+        cmd->angleturn = ((unsigned char)*demo_p++)<<8; 
+    }
+
     cmd->buttons = (unsigned char)*demo_p++; 
 } 
 
 
 void G_WriteDemoTiccmd (ticcmd_t* cmd) 
 { 
+    byte *demo_start;
+
     if (gamekeydown['q'])           // press q to end demo recording 
 	G_CheckDemoStatus (); 
+
+    demo_start = demo_p;
+
     *demo_p++ = cmd->forwardmove; 
     *demo_p++ = cmd->sidemove; 
-    *demo_p++ = (cmd->angleturn+128)>>8; 
+
+    // If this is a longtics demo, record in higher resolution
+ 
+    if (longtics)
+    {
+        *demo_p++ = (cmd->angleturn & 0xff);
+        *demo_p++ = (cmd->angleturn >> 8) & 0xff;
+    }
+    else
+    {
+        *demo_p++ = (cmd->angleturn+128)>>8; 
+    }
+
     *demo_p++ = cmd->buttons; 
-    demo_p -= 4; 
+
+    // reset demo pointer back
+    demo_p = demo_start;
+
     if (demo_p > demoend - 16)
     {
 	// no more space 
@@ -1546,10 +1678,24 @@ void G_RecordDemo (char* name)
 void G_BeginRecording (void) 
 { 
     int             i; 
+
+    // Check for the longtics parameter, to record hires angle
+    // turns in demos
+    longtics = M_CheckParm("-longtics") != 0;
 		
     demo_p = demobuffer;
 	
-    *demo_p++ = VERSION;
+    // Save the right version code for this demo
+ 
+    if (longtics)
+    {
+        *demo_p++ = DOOM_191_VERSION;
+    }
+    else
+    {
+        *demo_p++ = DOOM_VERSION;
+    }
+
     *demo_p++ = gameskill; 
     *demo_p++ = gameepisode; 
     *demo_p++ = gamemap; 
@@ -1580,14 +1726,30 @@ void G_DoPlayDemo (void)
 { 
     skill_t skill; 
     int             i, episode, map; 
+    int demoversion;
 	 
     gameaction = ga_nothing; 
     demobuffer = demo_p = W_CacheLumpName (defdemoname, PU_STATIC); 
-    if ( *demo_p++ != VERSION)
+
+    demoversion = *demo_p++;
+
+    if (demoversion == DOOM_VERSION)
     {
-      fprintf( stderr, "Demo is from a different game version!\n");
-      gameaction = ga_nothing;
-      return;
+        longtics = false;
+    }
+    else if (demoversion == DOOM_191_VERSION)
+    {
+        // demo recorded with cph's modified "v1.91" doom exe
+        longtics = true;
+    }
+    else
+    {
+        char errorbuf[80];
+
+        sprintf(errorbuf, "Demo is from a different game version! (read %i, should be %i)\n",
+                demoversion, DOOM_VERSION);
+
+        I_Error(errorbuf);
     }
     
     skill = *demo_p++; 
@@ -1647,9 +1809,15 @@ boolean G_CheckDemoStatus (void)
 	 
     if (timingdemo) 
     { 
+        float fps;
+        int realtics;
+
 	endtime = I_GetTime (); 
-	I_Error ("timed %i gametics in %i realtics",gametic 
-		 , endtime-starttime); 
+        realtics = endtime - starttime;
+        fps = ((float) gametic * 35) / realtics;
+
+	I_Error ("timed %i gametics in %i realtics (%f fps)",
+                 gametic, realtics, fps);
     } 
 	 
     if (demoplayback) 

@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: doomdef.h 256 2006-01-06 19:26:02Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //  Internally used data structures for virtually everything,
@@ -31,7 +37,10 @@
 // Global parameters/defines.
 //
 // DOOM version
-enum { VERSION =  109 };
+#define DOOM_VERSION 109
+
+// Version code for cph's longtics hack ("v1.91")
+#define DOOM_191_VERSION 111
 
 
 // Game mode handling - identify IWAD version
@@ -59,6 +68,14 @@ typedef enum
 
 } GameMission_t;
 
+// What version are we emulating?
+
+typedef enum
+{
+    exe_doom_1_9,   // Doom 1.9: used for shareware, registered and commercial
+    exe_ultimate,   // Ultimate Doom (retail)
+    exe_final,      // Final Doom
+} GameVersion_t;
 
 // Identify language to use, software localization.
 typedef enum
@@ -74,16 +91,6 @@ typedef enum
 // If rangecheck is undefined,
 // most parameter validation debugging code will not be compiled
 #define RANGECHECK
-
-// Do or do not use external soundserver.
-// The sndserver binary to be run separately
-//  has been introduced by Dave Taylor.
-// The integrated sound support is experimental,
-//  and unfinished. Default is synchronous.
-// Experimental asynchronous timer based is
-//  handled by SNDINTR. 
-#define SNDSERV  1
-//#define SNDINTR  1
 
 
 // This one switches between MIT SHM (no proper mouse)
@@ -130,7 +137,7 @@ typedef enum
     GS_LEVEL,
     GS_INTERMISSION,
     GS_FINALE,
-    GS_DEMOSCREEN
+    GS_DEMOSCREEN,
 } gamestate_t;
 
 //
@@ -147,7 +154,8 @@ typedef enum
 
 typedef enum
 {
-    sk_baby,
+    sk_noitems = -1,        // the "-skill 0" hack
+    sk_baby = 0,
     sk_easy,
     sk_medium,
     sk_hard,
@@ -280,6 +288,37 @@ typedef enum
 
 #define KEY_LALT	KEY_RALT
 
+// new keys:
+
+#define KEY_CAPSLOCK    (0x80+0x3a)
+#define KEY_SCRLCK      (0x80+0x46)
+
+#define KEYP_0          (0x80+0x52)
+#define KEYP_1          (0x80+0x4F)
+#define KEYP_2          (0x80+0x50)
+#define KEYP_3          (0x80+0x41)
+#define KEYP_4          (0x80+0x4B)
+#define KEYP_5          (0x80+0x4C)
+#define KEYP_6          (0x80+0x4D)
+#define KEYP_7          (0x80+0x47)
+#define KEYP_8          (0x80+0x48)
+#define KEYP_9          (0x80+0x49)
+
+#define KEY_HOME        (0x80+0x47)
+#define KEY_END         (0x80+0x4f)
+#define KEY_PGUP        (0x80+0x49)
+#define KEY_PGDN        (0x80+0x51)
+#define KEY_INS         (0x80+0x52)
+#define KEY_DEL         (0x80+0x53)
+#define KEYP_UPARROW      KEY_UPARROW
+#define KEYP_DOWNARROW    KEY_DOWNARROW
+#define KEYP_LEFTARROW    KEY_LEFTARROW
+#define KEYP_RIGHTARROW   KEY_RIGHTARROW
+#define KEYP_MULTIPLY     '*'
+#define KEYP_PLUS         '+'
+#define KEYP_MINUS        '-'
+#define KEYP_DIVIDE       '/'
+
 
 
 // DOOM basic types (boolean),
@@ -334,6 +373,50 @@ typedef enum
 #endif          // __DOOMDEF__
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.11  2006/01/06 19:26:02  fraggle
+// Fix the "-skill 0" hack commonly used under DOS
+//
+// Revision 1.10  2006/01/01 23:53:15  fraggle
+// Remove GS_WAITINGSTART gamestate.  This will be independent of the main
+// loop to avoid interfering with the main game code too much.
+//
+// Revision 1.9  2005/12/30 18:58:22  fraggle
+// Fix client code to correctly send reply to server on connection.
+// Add "waiting screen" while waiting for the game to start.
+// Hook in the new networking code into the main game code.
+//
+// Revision 1.8  2005/10/24 18:50:39  fraggle
+// Allow the game version to emulate to be specified from the command line
+// and set compatibility options accordingly.
+//
+// Revision 1.7  2005/09/04 17:33:43  fraggle
+// Support demos recorded with cph's modified "v1.91" doom exe - which
+// contain higher resolution angleturn
+//
+// Revision 1.6  2005/08/04 22:55:08  fraggle
+// Use DOOM_VERSION to define the Doom version (don't conflict with
+// automake's config.h).  Display GPL message instead of anti-piracy
+// messages.
+//
+// Revision 1.5  2005/08/04 21:48:32  fraggle
+// Turn on compiler optimisation and warning options
+// Add SDL_mixer sound code
+//
+// Revision 1.4  2005/07/24 02:14:04  fraggle
+// Move to SDL for graphics.
+// Translate key scancodes to correct internal format when reading
+// settings from config file - backwards compatible with config files
+// for original exes
+//
+// Revision 1.3  2005/07/23 19:29:45  fraggle
+// Put version number back to 1.9
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:43  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

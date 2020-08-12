@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: m_random.c 272 2006-01-08 17:52:16Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,12 +16,33 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.3  2006/01/08 17:52:16  fraggle
+// Seed the M_Random random number generator from the system time to give
+// it some more randomness.
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:27  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Random number LUT.
 //
 //-----------------------------------------------------------------------------
+
+static const char rcsid[] = "$Id: m_random.c 272 2006-01-08 17:52:16Z fraggle $";
+
+#include <time.h>
+
+#include "m_random.h"
 
 //
 // M_Random
@@ -66,7 +88,11 @@ int M_Random (void)
 
 void M_ClearRandom (void)
 {
-    rndindex = prndindex = 0;
+    prndindex = 0;
+
+    // Seed the M_Random counter from the system time
+
+    rndindex = time(NULL) & 0xff;
 }
 
 

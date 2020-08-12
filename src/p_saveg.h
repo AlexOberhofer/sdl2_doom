@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_saveg.h 368 2006-02-15 12:58:27Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,6 +16,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
 // DESCRIPTION:
 //	Savegame I/O, archiving, persistence.
 //
@@ -24,11 +30,25 @@
 #ifndef __P_SAVEG__
 #define __P_SAVEG__
 
+#include <stdio.h>
 
-#ifdef __GNUG__
-#pragma interface
-#endif
+// maximum size of a savegame description
 
+#define SAVESTRINGSIZE 24
+
+// filename to use for a savegame slot
+
+char *P_SaveGameFile(int slot);
+
+// Savegame file header read/write functions
+
+boolean P_ReadSaveGameHeader(void);
+void P_WriteSaveGameHeader(char *description);
+
+// Savegame end-of-file read/write functions
+
+boolean P_ReadSaveGameEOF(void);
+void P_WriteSaveGameEOF(void);
 
 // Persistent storage/archiving.
 // These are the load / save game routines.
@@ -41,12 +61,33 @@ void P_UnArchiveThinkers (void);
 void P_ArchiveSpecials (void);
 void P_UnArchiveSpecials (void);
 
-extern byte*		save_p; 
+extern FILE *save_stream;
 
 
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.5.2.1  2006/02/15 12:58:27  fraggle
+// Remove the savegame buffer entirely.  Keep the old savegame size limit bug add a "vanilla_savegame_limit" config file option which allows
+// the limit to be disabled if necessary.
+//
+// Revision 1.5  2006/01/19 18:46:24  fraggle
+// Move savegame header read/write code into p_saveg.c
+//
+// Revision 1.4  2005/10/16 01:18:10  fraggle
+// Global "configdir" variable with directory to store config files in.
+// Create a function to find the filename for a savegame slot.  Store
+// savegames in the config dir.
+//
+// Revision 1.3  2005/07/23 18:56:07  fraggle
+// Remove unneccessary pragmas
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:39  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

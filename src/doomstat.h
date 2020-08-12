@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: doomstat.h 223 2005-10-24 18:50:39Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //   All the global variables that store the internal state.
@@ -38,9 +44,6 @@
 #include "d_player.h"
 
 
-#ifdef __GNUG__
-#pragma interface
-#endif
 
 
 
@@ -60,14 +63,11 @@ extern  boolean	devparm;	// DEBUG: launched with -devparm
 //
 extern GameMode_t	gamemode;
 extern GameMission_t	gamemission;
+extern GameVersion_t    gameversion;
+extern char            *gamedescription;
 
 // Set if homebrew PWAD stuff has been added.
 extern  boolean	modifiedgame;
-
-
-// -------------------------------------------
-// Language.
-extern  Language_t   language;
 
 
 // -------------------------------------------
@@ -85,6 +85,9 @@ extern  boolean		autostart;
 extern  skill_t         gameskill;
 extern  int		gameepisode;
 extern  int		gamemap;
+
+// vertical movement from mouse/joystick disabled
+extern  int             novert;
 
 // Nightmare mode flag, single player.
 extern  boolean         respawnmonsters;
@@ -242,6 +245,7 @@ extern  int		maxammo[NUMAMMO];
 //
 
 // File handling stuff.
+extern  char *          configdir;
 extern	char		basedefault[1024];
 extern  FILE*		debugfile;
 
@@ -292,6 +296,40 @@ extern	int		ticdup;
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.9  2005/10/24 18:50:39  fraggle
+// Allow the game version to emulate to be specified from the command line
+// and set compatibility options accordingly.
+//
+// Revision 1.8  2005/10/16 01:18:10  fraggle
+// Global "configdir" variable with directory to store config files in.
+// Create a function to find the filename for a savegame slot.  Store
+// savegames in the config dir.
+//
+// Revision 1.7  2005/09/11 20:25:56  fraggle
+// Second configuration file to allow chocolate doom-specific settings.
+// Adjust some existing command line logic (for graphics settings and
+// novert) to adjust for this.
+//
+// Revision 1.6  2005/09/04 15:59:45  fraggle
+// 'novert' command line option to disable vertical mouse movement
+//
+// Revision 1.5  2005/09/04 14:51:19  fraggle
+// Display the correct quit messages according to which game is being played.
+// Remove "language" variable (do this through gettext, if ever)
+//
+// Revision 1.4  2005/08/31 21:21:18  fraggle
+// Better IWAD detection and identification. Support '-iwad' to specify
+// the IWAD to use.
+//
+// Revision 1.3  2005/07/23 18:56:07  fraggle
+// Remove unneccessary pragmas
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:09  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

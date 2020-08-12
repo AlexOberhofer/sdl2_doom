@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: i_system.h 234 2005-12-30 18:50:53Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //	System specific interface stuff.
@@ -27,9 +33,6 @@
 #include "d_ticcmd.h"
 #include "d_event.h"
 
-#ifdef __GNUG__
-#pragma interface
-#endif
 
 
 // Called by DoomMain.
@@ -45,6 +48,11 @@ byte*	I_ZoneBase (int *size);
 // returns current time in tics.
 int I_GetTime (void);
 
+// returns current time in ms
+int I_GetTimeMS (void);
+
+// Pause for a specified number of ms
+void I_Sleep(int ms);
 
 //
 // Called by D_DoomLoop,
@@ -93,6 +101,21 @@ void I_Error (char *error, ...);
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.5  2005/12/30 18:50:53  fraggle
+// Millisecond clock function
+//
+// Revision 1.4  2005/09/11 16:39:29  fraggle
+// Fix declaration of I_Sleep (not I_Delay) and move to right header
+//
+// Revision 1.3  2005/07/23 18:56:07  fraggle
+// Remove unneccessary pragmas
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:39  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

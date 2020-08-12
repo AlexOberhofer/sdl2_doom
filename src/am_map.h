@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: am_map.h 162 2005-10-04 21:41:42Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,6 +16,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
 // DESCRIPTION:
 //  AutoMap module.
 //
@@ -22,6 +28,9 @@
 
 #ifndef __AMMAP_H__
 #define __AMMAP_H__
+
+#include "d_event.h"
+#include "m_cheat.h"
 
 // Used by ST StatusBar stuff.
 #define AM_MSGHEADER (('a'<<24)+('m'<<16))
@@ -44,10 +53,21 @@ void AM_Drawer (void);
 void AM_Stop (void);
 
 
+extern cheatseq_t cheat_amap;
+
 
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.3  2005/10/04 21:41:42  fraggle
+// Rewrite cheats code.  Add dehacked cheat replacement.
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:44  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: info.h 24 2005-07-23 21:42:52Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //	Thing frame/state LUT,
@@ -1157,7 +1163,7 @@ typedef struct
 } state_t;
 
 extern state_t	states[NUMSTATES];
-extern char *sprnames[NUMSPRITES];
+extern char *sprnames[];
 
 
 
@@ -1336,6 +1342,15 @@ extern mobjinfo_t mobjinfo[NUMMOBJTYPES];
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.3  2005/07/23 21:42:52  fraggle
+// Add missing null to end of sprite names list
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:21  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

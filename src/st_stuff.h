@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: st_stuff.h 162 2005-10-04 21:41:42Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //	Status bar code.
@@ -27,6 +33,7 @@
 
 #include "doomtype.h"
 #include "d_event.h"
+#include "m_cheat.h"
 
 // Size of statusbar.
 // Now sensitive for scaling.
@@ -77,11 +84,31 @@ typedef enum
 
 boolean ST_Responder(event_t* ev);
 
+extern cheatseq_t cheat_mus;
+extern cheatseq_t cheat_god;
+extern cheatseq_t cheat_ammo;
+extern cheatseq_t cheat_ammonokey;
+extern cheatseq_t cheat_noclip;
+extern cheatseq_t cheat_commercial_noclip;
+extern cheatseq_t cheat_powerup[7];
+extern cheatseq_t cheat_choppers;
+extern cheatseq_t cheat_clev;
+extern cheatseq_t cheat_mypos;
 
 
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.3  2005/10/04 21:41:42  fraggle
+// Rewrite cheats code.  Add dehacked cheat replacement.
+//
+// Revision 1.2  2005/07/23 16:44:57  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:07  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------
+

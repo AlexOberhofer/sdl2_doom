@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: d_event.h 241 2006-01-02 00:17:42Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //
@@ -106,11 +112,6 @@ typedef enum
 //
 // GLOBAL VARIABLES
 //
-#define MAXEVENTS		64
-
-extern  event_t		events[MAXEVENTS];
-extern  int             eventhead;
-extern	int		eventtail;
 
 extern  gameaction_t    gameaction;
 
@@ -118,6 +119,16 @@ extern  gameaction_t    gameaction;
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.3  2006/01/02 00:17:41  fraggle
+// Encapsulate the event queue code properly.  Add a D_PopEvent function
+// to read a new event from the event queue.
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:44  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

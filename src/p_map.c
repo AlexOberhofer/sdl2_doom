@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_map.c 261 2006-01-07 19:16:39Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard, Andrey Budko
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,28 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.5  2006/01/07 19:16:39  fraggle
+// Only display a warning when unable to emulate a spechit overrun
+//
+// Revision 1.4  2006/01/07 19:11:54  fraggle
+// Import the spechit overrun code from prboom-plus.  Thanks to Andrey Budko
+// for his investigation into this behavior.
+//
+// Revision 1.3  2005/10/17 22:07:26  fraggle
+// Fix "Monsters Infight"
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:39  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Movement, collision handling.
@@ -23,7 +45,12 @@
 //
 //-----------------------------------------------------------------------------
 
+static const char
+rcsid[] = "$Id: p_map.c 261 2006-01-07 19:16:39Z fraggle $";
+
 #include <stdlib.h>
+
+#include "deh_misc.h"
 
 #include "m_bbox.h"
 #include "m_random.h"
@@ -62,7 +89,17 @@ line_t*		ceilingline;
 
 // keep track of special lines as they are hit,
 // but don't process them until the move is proven valid
-#define MAXSPECIALCROSS		8
+
+// fraggle: I have increased the size of this buffer.  In the original Doom,
+// overrunning past this limit caused other bits of memory to be overwritten,
+// affecting demo playback.  However, in doing so, the limit was still 
+// exceeded.  So we have to support more than 8 specials.
+//
+// We keep the original limit, to detect what variables in memory were 
+// overwritten (see SpechitOverrun())
+
+#define MAXSPECIALCROSS 		20
+#define MAXSPECIALCROSS_ORIGINAL	8
 
 line_t*		spechit[MAXSPECIALCROSS];
 int		numspechit;
@@ -179,6 +216,7 @@ P_TeleportMove
 // MOVEMENT ITERATOR FUNCTIONS
 //
 
+static void SpechitOverrun(line_t *ld);
 
 //
 // PIT_CheckLine
@@ -237,7 +275,14 @@ boolean PIT_CheckLine (line_t* ld)
     // if contacted a special line, add it to the list
     if (ld->special)
     {
-	spechit[numspechit] = ld;
+        // fraggle: spechits overrun emulation code from prboom-plus
+        if (numspechit >= MAXSPECIALCROSS_ORIGINAL)
+        {
+            SpechitOverrun(ld);
+        }
+
+        spechit[numspechit] = ld;
+        
 	numspechit++;
     }
 
@@ -294,8 +339,8 @@ boolean PIT_CheckThing (mobj_t* thing)
 	if (tmthing->z+tmthing->height < thing->z)
 	    return true;		// underneath
 		
-	if (tmthing->target && (
-	    tmthing->target->type == thing->type || 
+	if (tmthing->target 
+         && (tmthing->target->type == thing->type || 
 	    (tmthing->target->type == MT_KNIGHT && thing->type == MT_BRUISER)||
 	    (tmthing->target->type == MT_BRUISER && thing->type == MT_KNIGHT) ) )
 	{
@@ -303,7 +348,11 @@ boolean PIT_CheckThing (mobj_t* thing)
 	    if (thing == tmthing->target)
 		return true;
 
-	    if (thing->type != MT_PLAYER)
+            // sdh: Add deh_species_infighting here.  We can override the
+            // "monsters of the same species cant hurt each other" behavior
+            // through dehacked patches
+
+	    if (thing->type != MT_PLAYER && !deh_species_infighting)
 	    {
 		// Explode, but do no damage.
 		// Let players missile other players.
@@ -1333,5 +1382,53 @@ P_ChangeSector
 	
 	
     return nofit;
+}
+
+// Code to emulate the behavior of Vanilla Doom when encountering an overrun
+// of the spechit array.  This is by Andrey Budko (e6y) and comes from his
+// PrBoom plus port.  A big thanks to Andrey for this.
+
+static void SpechitOverrun(line_t *ld)
+{
+    int addr = 0x01C09C98 + (ld - lines) * 0x3E;
+
+    switch(numspechit)
+    {
+        case 9: 
+        case 10:
+        case 11:
+        case 12:
+            tmbbox[numspechit-9] = addr;
+            break;
+        case 13: 
+            crushchange = addr; 
+            break;
+        case 14: 
+            nofit = addr; 
+            break;
+        case 15: 
+            bombsource = (mobj_t*)addr; 
+            break;
+        case 16: 
+            bombdamage = addr; 
+            break;
+        case 17: 
+            bombspot = (mobj_t*)addr; 
+            break;
+        case 18: 
+            usething = (mobj_t*)addr; 
+            break;
+        case 19: 
+            attackrange = addr; 
+            break;
+        case 20: 
+            la_damage = addr; 
+            break;
+        default:
+            fprintf(stderr, "SpechitOverrun: Warning: unable to emulate"
+                            "an overrun where numspechit=%i\n",
+                            numspechit);
+            break;
+    }
 }
 

@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_maputl.c 93 2005-09-08 09:58:00Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,28 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.5  2005/09/08 09:58:00  fraggle
+// MAXINTERCEPTS got converted to INT_MAXERCEPTS accidentally when switching
+// to the ANSI standard limit constants
+//
+// Revision 1.4  2005/08/04 18:42:15  fraggle
+// Silence compiler warnings
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:03  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Movement/collision utility functions,
@@ -24,6 +46,10 @@
 //	and some PIT_* functions to use for iteration.
 //
 //-----------------------------------------------------------------------------
+
+static const char
+rcsid[] = "$Id: p_maputl.c 93 2005-09-08 09:58:00Z fraggle $";
+
 
 #include <stdlib.h>
 
@@ -108,8 +134,8 @@ P_BoxOnLineSide
 ( fixed_t*	tmbox,
   line_t*	ld )
 {
-    int		p1;
-    int		p2;
+    int		p1 = 0;
+    int		p2 = 0;
 	
     switch (ld->slopetype)
     {
@@ -692,7 +718,7 @@ P_TraverseIntercepts
 	
     while (count--)
     {
-	dist = MAXINT;
+	dist = INT_MAX;
 	for (scan = intercepts ; scan<intercept_p ; scan++)
 	{
 	    if (scan->frac < dist)
@@ -720,7 +746,7 @@ P_TraverseIntercepts
         if ( !func (in) )
 	    return false;	// don't bother going farther
 
-	in->frac = MAXINT;
+	in->frac = INT_MAX;
     }
 	
     return true;		// everything was traversed

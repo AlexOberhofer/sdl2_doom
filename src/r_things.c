@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: r_things.c 177 2005-10-08 21:02:55Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,17 +16,46 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.6  2005/10/08 21:02:55  fraggle
+// Allow dehacked substitutions on sprite names
+//
+// Revision 1.5  2005/08/06 18:37:47  fraggle
+// Fix low resolution mode
+//
+// Revision 1.4  2005/08/04 18:42:15  fraggle
+// Silence compiler warnings
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:57  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:44  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Refresh of things, i.e. objects represented by sprites.
 //
 //-----------------------------------------------------------------------------
 
+
+static const char
+rcsid[] = "$Id: r_things.c 177 2005-10-08 21:02:55Z fraggle $";
+
+
 #include <stdio.h>
 #include <stdlib.h>
 
 
+#include "deh_main.h"
 #include "doomdef.h"
 #include "m_swap.h"
 
@@ -175,7 +205,6 @@ void R_InitSpriteDefs (char** namelist)
     char**	check;
     int		i;
     int		l;
-    int		intname;
     int		frame;
     int		rotation;
     int		start;
@@ -202,17 +231,16 @@ void R_InitSpriteDefs (char** namelist)
     // Just compare 4 characters as ints
     for (i=0 ; i<numsprites ; i++)
     {
-	spritename = namelist[i];
+	spritename = DEH_String(namelist[i]);
 	memset (sprtemp,-1, sizeof(sprtemp));
 		
 	maxframe = -1;
-	intname = *(int *)namelist[i];
 	
 	// scan the lumps,
 	//  filling in the frames for whatever is found
 	for (l=start+1 ; l<end ; l++)
 	{
-	    if (*(int *)lumpinfo[l].name == intname)
+	    if (!strncasecmp(lumpinfo[l].name, spritename, 4))
 	    {
 		frame = lumpinfo[l].name[4] - 'A';
 		rotation = lumpinfo[l].name[5] - '0';
@@ -249,7 +277,7 @@ void R_InitSpriteDefs (char** namelist)
 	      case -1:
 		// no rotations were found for that frame at all
 		I_Error ("R_InitSprites: No patches found "
-			 "for %s frame %c", namelist[i], frame+'A');
+			 "for %s frame %c", spritename, frame+'A');
 		break;
 		
 	      case 0:
@@ -262,7 +290,7 @@ void R_InitSpriteDefs (char** namelist)
 		    if (sprtemp[frame].lump[rotation] == -1)
 			I_Error ("R_InitSprites: Sprite %s frame %c "
 				 "is missing rotations",
-				 namelist[i], frame+'A');
+				 spritename, frame+'A');
 		break;
 	    }
 	}
@@ -412,7 +440,7 @@ R_DrawVisSprite
     }
     else if (vis->mobjflags & MF_TRANSLATION)
     {
-	colfunc = R_DrawTranslatedColumn;
+	colfunc = transcolfunc;
 	dc_translation = translationtables - 256 +
 	    ( (vis->mobjflags & MF_TRANSLATION) >> (MF_TRANSSHIFT-8) );
     }
@@ -808,11 +836,12 @@ void R_SortVisSprites (void)
     unsorted.prev = vissprite_p-1;
     
     // pull the vissprites out by scale
-    //best = 0;		// shut up the compiler warning
+
     vsprsortedhead.next = vsprsortedhead.prev = &vsprsortedhead;
     for (i=0 ; i<count ; i++)
     {
-	bestscale = MAXINT;
+	bestscale = INT_MAX;
+        best = unsorted.next;
 	for (ds=unsorted.next ; ds!= &unsorted ; ds=ds->next)
 	{
 	    if (ds->scale < bestscale)

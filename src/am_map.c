@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: am_map.c 162 2005-10-04 21:41:42Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,15 +16,44 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
-// $Log:$
+//
+// $Log$
+// Revision 1.7  2005/10/04 21:41:42  fraggle
+// Rewrite cheats code.  Add dehacked cheat replacement.
+//
+// Revision 1.6  2005/10/03 21:39:39  fraggle
+// Dehacked text substitutions
+//
+// Revision 1.5  2005/09/04 18:44:22  fraggle
+// shut up compiler warnings
+//
+// Revision 1.4  2005/08/04 18:42:15  fraggle
+// Silence compiler warnings
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:44  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:  the automap code
 //
 //-----------------------------------------------------------------------------
 
+static const char rcsid[] = "$Id: am_map.c 162 2005-10-04 21:41:42Z fraggle $";
+
 #include <stdio.h>
 
+#include "deh_main.h"
 
 #include "z_zone.h"
 #include "doomdef.h"
@@ -283,8 +313,7 @@ static int markpointnum = 0; // next point to be assigned
 
 static int followplayer = 1; // specifies whether to follow the player around
 
-static unsigned char cheat_amap_seq[] = { 0xb2, 0x26, 0x26, 0x2e, 0xff };
-static cheatseq_t cheat_amap = { cheat_amap_seq, 0 };
+cheatseq_t cheat_amap = CHEAT("iddt", 0);
 
 static boolean stopped = true;
 
@@ -313,9 +342,9 @@ AM_getIslope
 
     dy = ml->a.y - ml->b.y;
     dx = ml->b.x - ml->a.x;
-    if (!dy) is->islp = (dx<0?-MAXINT:MAXINT);
+    if (!dy) is->islp = (dx<0?-INT_MAX:INT_MAX);
     else is->islp = FixedDiv(dx, dy);
-    if (!dx) is->slp = (dy<0?-MAXINT:MAXINT);
+    if (!dx) is->slp = (dy<0?-INT_MAX:INT_MAX);
     else is->slp = FixedDiv(dy, dx);
 
 }
@@ -391,8 +420,8 @@ void AM_findMinMaxBoundaries(void)
     fixed_t a;
     fixed_t b;
 
-    min_x = min_y =  MAXINT;
-    max_x = max_y = -MAXINT;
+    min_x = min_y =  INT_MAX;
+    max_x = max_y = -INT_MAX;
   
     for (i=0;i<numvertexes;i++)
     {
@@ -430,7 +459,7 @@ void AM_changeWindowLoc(void)
     if (m_paninc.x || m_paninc.y)
     {
 	followplayer = 0;
-	f_oldloc.x = MAXINT;
+	f_oldloc.x = INT_MAX;
     }
 
     m_x += m_paninc.x;
@@ -462,7 +491,7 @@ void AM_initVariables(void)
     automapactive = true;
     fb = screens[0];
 
-    f_oldloc.x = MAXINT;
+    f_oldloc.x = INT_MAX;
     amclock = 0;
     lightlev = 0;
 
@@ -677,21 +706,27 @@ AM_Responder
 	    break;
 	  case AM_FOLLOWKEY:
 	    followplayer = !followplayer;
-	    f_oldloc.x = MAXINT;
-	    plr->message = followplayer ? AMSTR_FOLLOWON : AMSTR_FOLLOWOFF;
+	    f_oldloc.x = INT_MAX;
+            if (followplayer)
+                plr->message = DEH_String(AMSTR_FOLLOWON);
+            else
+                plr->message = DEH_String(AMSTR_FOLLOWOFF);
 	    break;
 	  case AM_GRIDKEY:
 	    grid = !grid;
-	    plr->message = grid ? AMSTR_GRIDON : AMSTR_GRIDOFF;
+            if (grid)
+                plr->message = DEH_String(AMSTR_GRIDON);
+            else
+                plr->message = DEH_String(AMSTR_GRIDOFF);
 	    break;
 	  case AM_MARKKEY:
-	    sprintf(buffer, "%s %d", AMSTR_MARKEDSPOT, markpointnum);
+	    sprintf(buffer, "%s %d", DEH_String(AMSTR_MARKEDSPOT), markpointnum);
 	    plr->message = buffer;
 	    AM_addMark();
 	    break;
 	  case AM_CLEARMARKKEY:
 	    AM_clearMarks();
-	    plr->message = AMSTR_MARKSCLEARED;
+	    plr->message = DEH_String(AMSTR_MARKSCLEARED);
 	    break;
 	  default:
 	    cheatstate=0;
@@ -782,7 +817,7 @@ void AM_doFollowPlayer(void)
 //
 void AM_updateLightLev(void)
 {
-    static nexttic = 0;
+    static int nexttic = 0;
     //static int litelevels[] = { 0, 3, 5, 6, 6, 7, 7, 7 };
     static int litelevels[] = { 0, 4, 7, 10, 12, 14, 15, 15 };
     static int litelevelscnt = 0;
@@ -855,9 +890,9 @@ AM_clipMline
 	TOP	=8
     };
     
-    register	outcode1 = 0;
-    register	outcode2 = 0;
-    register	outside;
+    register int	outcode1 = 0;
+    register int	outcode2 = 0;
+    register int	outside;
     
     fpoint_t	tmp;
     int		dx;
@@ -949,6 +984,11 @@ AM_clipMline
 	    tmp.y = fl->a.y + (dy*(-fl->a.x))/dx;
 	    tmp.x = 0;
 	}
+        else
+        {
+            tmp.x = 0;
+            tmp.y = 0;
+        }
 
 	if (outside == outcode1)
 	{
@@ -988,7 +1028,7 @@ AM_drawFline
     register int ay;
     register int d;
     
-    static fuck = 0;
+    static int fuck = 0;
 
     // For debugging only
     if (      fl->a.x < 0 || fl->a.x >= f_w

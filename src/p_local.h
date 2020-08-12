@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_local.h 93 2005-09-08 09:58:00Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //	Play functions, animation, global header.
@@ -93,8 +99,8 @@ void	P_PlayerThink (player_t* player);
 //
 // P_MOBJ
 //
-#define ONFLOORZ		MININT
-#define ONCEILINGZ		MAXINT
+#define ONFLOORZ		INT_MIN
+#define ONCEILINGZ		INT_MAX
 
 // Time interval for item respawning.
 #define ITEMQUESIZE		128
@@ -283,7 +289,20 @@ P_DamageMobj
 #endif	// __P_LOCAL__
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.4  2005/09/08 09:58:00  fraggle
+// MAXINTERCEPTS got converted to INT_MAXERCEPTS accidentally when switching
+// to the ANSI standard limit constants
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:49  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------
 

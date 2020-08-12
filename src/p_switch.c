@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_switch.c 349 2006-01-27 18:21:39Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,15 +16,40 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
-// $Log:$
+//
+// $Log$
+// Revision 1.3.2.2  2006/01/27 18:21:39  fraggle
+// Fix compiler warning due to missing include
+//
+// Revision 1.3.2.1  2006/01/27 18:18:46  fraggle
+// dehacked replacements for switch texture names
+//
+// Revision 1.3  2005/09/08 00:01:51  fraggle
+// Fix switches not changing in Episode 4
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:54  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Switches, buttons. Two-state animation. Exits.
 //
 //-----------------------------------------------------------------------------
 
+static const char
+rcsid[] = "$Id: p_switch.c 349 2006-01-27 18:21:39Z fraggle $";
+
+
 #include "i_system.h"
+#include "deh_main.h"
 #include "doomdef.h"
 #include "p_local.h"
 
@@ -109,7 +135,7 @@ void P_InitSwitchList(void)
 	
     episode = 1;
 
-    if (gamemode == registered)
+    if (gamemode == registered || gamemode == retail)
 	episode = 2;
     else
 	if ( gamemode == commercial )
@@ -138,8 +164,8 @@ void P_InitSwitchList(void)
 	    
 	    value = R_TextureNumForName(alphSwitchList[i].name1);
 #endif
-	    switchlist[index++] = R_TextureNumForName(alphSwitchList[i].name1);
-	    switchlist[index++] = R_TextureNumForName(alphSwitchList[i].name2);
+	    switchlist[index++] = R_TextureNumForName(DEH_String(alphSwitchList[i].name1));
+	    switchlist[index++] = R_TextureNumForName(DEH_String(alphSwitchList[i].name2));
 	}
     }
 }

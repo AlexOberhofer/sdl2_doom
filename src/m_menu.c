@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: m_menu.c 329 2006-01-22 23:48:07Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,57 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.11.2.2  2006/01/22 23:48:07  fraggle
+// Allow changing of all menu graphic lumps via dehacked
+//
+// Revision 1.11.2.1  2006/01/22 21:21:57  fraggle
+// Dehacked string replacements for menu graphic lump names
+//
+// Revision 1.11  2005/10/29 21:38:55  fraggle
+// Fix help screen orderings and skull positions to make Chocolate Doom
+// behave exactly like the original executables.
+//
+// Revision 1.10  2005/10/16 20:55:50  fraggle
+// Fix the '-cdrom' command-line option.
+//
+// Revision 1.9  2005/10/16 01:18:10  fraggle
+// Global "configdir" variable with directory to store config files in.
+// Create a function to find the filename for a savegame slot.  Store
+// savegames in the config dir.
+//
+// Revision 1.8  2005/10/03 21:39:39  fraggle
+// Dehacked text substitutions
+//
+// Revision 1.7  2005/09/17 20:25:56  fraggle
+// Set the default values for variables in their initialisers.  Remove the
+// "defaultvalue" parameter and associated code from the configuration
+// file parsing code.
+//
+// Revision 1.6  2005/09/07 21:30:42  fraggle
+// Remove non-ANSI C headers.  Use standard C file I/O functions.
+//
+// Revision 1.5  2005/09/04 14:51:19  fraggle
+// Display the correct quit messages according to which game is being played.
+// Remove "language" variable (do this through gettext, if ever)
+//
+// Revision 1.4  2005/08/06 18:37:46  fraggle
+// Fix low resolution mode
+//
+// Revision 1.3  2005/07/23 18:54:30  fraggle
+// Fix quit prompt not displayed properly
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:52  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	DOOM selection menu, options, episode etc.
@@ -23,10 +74,9 @@
 //
 //-----------------------------------------------------------------------------
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+static const char
+rcsid[] = "$Id: m_menu.c 329 2006-01-22 23:48:07Z fraggle $";
+
 #include <stdlib.h>
 #include <ctype.h>
 
@@ -35,6 +85,7 @@
 #include "dstrings.h"
 
 #include "d_main.h"
+#include "deh_main.h"
 
 #include "i_system.h"
 #include "i_video.h"
@@ -51,6 +102,7 @@
 
 #include "m_argv.h"
 #include "m_swap.h"
+#include "p_saveg.h"
 
 #include "s_sound.h"
 
@@ -62,6 +114,7 @@
 #include "m_menu.h"
 
 
+extern void M_QuitDOOM(int);
 
 extern patch_t*		hu_font[HU_FONTSIZE];
 extern boolean		message_dontfuckwithme;
@@ -71,34 +124,34 @@ extern boolean		chat_on;		// in heads-up code
 //
 // defaulted values
 //
-int			mouseSensitivity;       // has default
+int			mouseSensitivity = 5;
 
 // Show messages has default, 0 = off, 1 = on
-int			showMessages;
+int			showMessages = 1;
 	
 
 // Blocky mode, has default, 0 = high, 1 = normal
-int			detailLevel;		
-int			screenblocks;		// has default
+int			detailLevel = 0;
+int			screenblocks = 9;
 
 // temp for screenblocks (0-9)
-int			screenSize;		
+int			screenSize;
 
 // -1 = no quicksave slot picked!
-int			quickSaveSlot;          
+int			quickSaveSlot;
 
  // 1 = message to be printed
 int			messageToPrint;
 // ...and here is the message string!
-char*			messageString;		
+char*			messageString;
 
 // message x & y
-int			messx;			
+int			messx;
 int			messy;
 int			messageLastMenuActive;
 
 // timed message = no input from user
-boolean			messageNeedsInput;     
+boolean			messageNeedsInput;
 
 void    (*messageRoutine)(int response);
 
@@ -508,27 +561,24 @@ menu_t  SaveDef =
 //
 void M_ReadSaveStrings(void)
 {
-    int             handle;
-    int             count;
-    int             i;
+    FILE   *handle;
+    int     count;
+    int     i;
     char    name[256];
 	
     for (i = 0;i < load_end;i++)
     {
-	if (M_CheckParm("-cdrom"))
-	    sprintf(name,"c:\\doomdata\\"SAVEGAMENAME"%d.dsg",i);
-	else
-	    sprintf(name,SAVEGAMENAME"%d.dsg",i);
+        strcpy(name, P_SaveGameFile(i));
 
-	handle = open (name, O_RDONLY | 0, 0666);
-	if (handle == -1)
+	handle = fopen(name, "rb");
+	if (handle == NULL)
 	{
-	    strcpy(&savegamestrings[i][0],EMPTYSTRING);
+	    strcpy(&savegamestrings[i][0], EMPTYSTRING);
 	    LoadMenu[i].status = 0;
 	    continue;
 	}
-	count = read (handle, &savegamestrings[i], SAVESTRINGSIZE);
-	close (handle);
+	count = fread(&savegamestrings[i], 1, SAVESTRINGSIZE, handle);
+	fclose(handle);
 	LoadMenu[i].status = 1;
     }
 }
@@ -541,7 +591,7 @@ void M_DrawLoad(void)
 {
     int             i;
 	
-    V_DrawPatchDirect (72,28,0,W_CacheLumpName("M_LOADG",PU_CACHE));
+    V_DrawPatchDirect (72,28,0,W_CacheLumpName(DEH_String("M_LOADG"),PU_CACHE));
     for (i = 0;i < load_end; i++)
     {
 	M_DrawSaveLoadBorder(LoadDef.x,LoadDef.y+LINEHEIGHT*i);
@@ -558,15 +608,15 @@ void M_DrawSaveLoadBorder(int x,int y)
 {
     int             i;
 	
-    V_DrawPatchDirect (x-8,y+7,0,W_CacheLumpName("M_LSLEFT",PU_CACHE));
+    V_DrawPatchDirect (x-8,y+7,0,W_CacheLumpName(DEH_String("M_LSLEFT"),PU_CACHE));
 	
     for (i = 0;i < 24;i++)
     {
-	V_DrawPatchDirect (x,y+7,0,W_CacheLumpName("M_LSCNTR",PU_CACHE));
+	V_DrawPatchDirect (x,y+7,0,W_CacheLumpName(DEH_String("M_LSCNTR"),PU_CACHE));
 	x += 8;
     }
 
-    V_DrawPatchDirect (x,y+7,0,W_CacheLumpName("M_LSRGHT",PU_CACHE));
+    V_DrawPatchDirect (x,y+7,0,W_CacheLumpName(DEH_String("M_LSRGHT"),PU_CACHE));
 }
 
 
@@ -578,10 +628,8 @@ void M_LoadSelect(int choice)
 {
     char    name[256];
 	
-    if (M_CheckParm("-cdrom"))
-	sprintf(name,"c:\\doomdata\\"SAVEGAMENAME"%d.dsg",choice);
-    else
-	sprintf(name,SAVEGAMENAME"%d.dsg",choice);
+    strcpy(name, P_SaveGameFile(choice));
+
     G_LoadGame (name);
     M_ClearMenus ();
 }
@@ -593,7 +641,7 @@ void M_LoadGame (int choice)
 {
     if (netgame)
     {
-	M_StartMessage(LOADNET,NULL,false);
+	M_StartMessage(DEH_String(LOADNET),NULL,false);
 	return;
     }
 	
@@ -609,7 +657,7 @@ void M_DrawSave(void)
 {
     int             i;
 	
-    V_DrawPatchDirect (72,28,0,W_CacheLumpName("M_SAVEG",PU_CACHE));
+    V_DrawPatchDirect (72,28,0,W_CacheLumpName(DEH_String("M_SAVEG"),PU_CACHE));
     for (i = 0;i < load_end; i++)
     {
 	M_DrawSaveLoadBorder(LoadDef.x,LoadDef.y+LINEHEIGHT*i);
@@ -658,7 +706,7 @@ void M_SaveGame (int choice)
 {
     if (!usergame)
     {
-	M_StartMessage(SAVEDEAD,NULL,false);
+	M_StartMessage(DEH_String(SAVEDEAD),NULL,false);
 	return;
     }
 	
@@ -704,7 +752,7 @@ void M_QuickSave(void)
 	quickSaveSlot = -2;	// means to pick a slot now
 	return;
     }
-    sprintf(tempstring,QSPROMPT,savegamestrings[quickSaveSlot]);
+    sprintf(tempstring,DEH_String(QSPROMPT),savegamestrings[quickSaveSlot]);
     M_StartMessage(tempstring,M_QuickSaveResponse,true);
 }
 
@@ -727,16 +775,16 @@ void M_QuickLoad(void)
 {
     if (netgame)
     {
-	M_StartMessage(QLOADNET,NULL,false);
+	M_StartMessage(DEH_String(QLOADNET),NULL,false);
 	return;
     }
 	
     if (quickSaveSlot < 0)
     {
-	M_StartMessage(QSAVESPOT,NULL,false);
+	M_StartMessage(DEH_String(QSAVESPOT),NULL,false);
 	return;
     }
-    sprintf(tempstring,QLPROMPT,savegamestrings[quickSaveSlot]);
+    sprintf(tempstring,DEH_String(QLPROMPT),savegamestrings[quickSaveSlot]);
     M_StartMessage(tempstring,M_QuickLoadResponse,true);
 }
 
@@ -749,21 +797,60 @@ void M_QuickLoad(void)
 //
 void M_DrawReadThis1(void)
 {
+    char *lumpname = "CREDIT";
+    int skullx = 330, skully = 175;
+
     inhelpscreens = true;
-    switch ( gamemode )
+    
+    // Different versions of Doom 1.9 work differently
+
+    switch (gameversion)
     {
-      case commercial:
-	V_DrawPatchDirect (0,0,0,W_CacheLumpName("HELP",PU_CACHE));
-	break;
-      case shareware:
-      case registered:
-      case retail:
-	V_DrawPatchDirect (0,0,0,W_CacheLumpName("HELP1",PU_CACHE));
-	break;
-      default:
-	break;
+        case exe_doom_1_9:
+            if (gamemode == commercial)
+            {
+                // Doom 2
+
+                lumpname = "HELP";
+
+                skullx = 330;
+                skully = 165;
+            }
+            else
+            {
+                // Doom 1
+                // HELP2 is the first screen shown in Doom 1
+                
+                lumpname = "HELP2";
+
+                skullx = 280;
+                skully = 185;
+            }
+            break;
+
+        case exe_ultimate:
+
+            // Ultimate Doom always displays "HELP1".
+
+            lumpname = "HELP1";
+
+            break;
+
+        case exe_final:
+
+            // Final Doom always displays "HELP".
+
+            lumpname = "HELP";
+
+            break;
     }
-    return;
+
+    lumpname = DEH_String(lumpname);
+    
+    V_DrawPatchDirect (0, 0, 0, W_CacheLumpName(lumpname, PU_CACHE));
+
+    ReadDef1.x = skullx;
+    ReadDef1.y = skully;
 }
 
 
@@ -774,21 +861,11 @@ void M_DrawReadThis1(void)
 void M_DrawReadThis2(void)
 {
     inhelpscreens = true;
-    switch ( gamemode )
-    {
-      case retail:
-      case commercial:
-	// This hack keeps us from having to change menus.
-	V_DrawPatchDirect (0,0,0,W_CacheLumpName("CREDIT",PU_CACHE));
-	break;
-      case shareware:
-      case registered:
-	V_DrawPatchDirect (0,0,0,W_CacheLumpName("HELP2",PU_CACHE));
-	break;
-      default:
-	break;
-    }
-    return;
+
+    // We only ever draw the second page if this is 
+    // gameversion == exe_doom_1_9 and gamemode == registered
+
+    V_DrawPatchDirect(0, 0, 0, W_CacheLumpName("HELP1", PU_CACHE));
 }
 
 
@@ -797,7 +874,7 @@ void M_DrawReadThis2(void)
 //
 void M_DrawSound(void)
 {
-    V_DrawPatchDirect (60,38,0,W_CacheLumpName("M_SVOL",PU_CACHE));
+    V_DrawPatchDirect (60,38,0,W_CacheLumpName(DEH_String("M_SVOL"),PU_CACHE));
 
     M_DrawThermo(SoundDef.x,SoundDef.y+LINEHEIGHT*(sfx_vol+1),
 		 16,snd_SfxVolume);
@@ -853,7 +930,7 @@ void M_MusicVol(int choice)
 //
 void M_DrawMainMenu(void)
 {
-    V_DrawPatchDirect (94,2,0,W_CacheLumpName("M_DOOM",PU_CACHE));
+    V_DrawPatchDirect (94,2,0,W_CacheLumpName(DEH_String("M_DOOM"),PU_CACHE));
 }
 
 
@@ -864,15 +941,15 @@ void M_DrawMainMenu(void)
 //
 void M_DrawNewGame(void)
 {
-    V_DrawPatchDirect (96,14,0,W_CacheLumpName("M_NEWG",PU_CACHE));
-    V_DrawPatchDirect (54,38,0,W_CacheLumpName("M_SKILL",PU_CACHE));
+    V_DrawPatchDirect (96,14,0,W_CacheLumpName(DEH_String("M_NEWG"),PU_CACHE));
+    V_DrawPatchDirect (54,38,0,W_CacheLumpName(DEH_String("M_SKILL"),PU_CACHE));
 }
 
 void M_NewGame(int choice)
 {
     if (netgame && !demoplayback)
     {
-	M_StartMessage(NEWGAME,NULL,false);
+	M_StartMessage(DEH_String(NEWGAME),NULL,false);
 	return;
     }
 	
@@ -890,7 +967,7 @@ int     epi;
 
 void M_DrawEpisode(void)
 {
-    V_DrawPatchDirect (54,38,0,W_CacheLumpName("M_EPISOD",PU_CACHE));
+    V_DrawPatchDirect (54,38,0,W_CacheLumpName(DEH_String("M_EPISOD"),PU_CACHE));
 }
 
 void M_VerifyNightmare(int ch)
@@ -906,7 +983,7 @@ void M_ChooseSkill(int choice)
 {
     if (choice == nightmare)
     {
-	M_StartMessage(NIGHTMARE,M_VerifyNightmare,true);
+	M_StartMessage(DEH_String(NIGHTMARE),M_VerifyNightmare,true);
 	return;
     }
 	
@@ -919,7 +996,7 @@ void M_Episode(int choice)
     if ( (gamemode == shareware)
 	 && choice)
     {
-	M_StartMessage(SWSTRING,NULL,false);
+	M_StartMessage(DEH_String(SWSTRING),NULL,false);
 	M_SetupNextMenu(&ReadDef1);
 	return;
     }
@@ -948,13 +1025,15 @@ char	msgNames[2][9]		= {"M_MSGOFF","M_MSGON"};
 
 void M_DrawOptions(void)
 {
-    V_DrawPatchDirect (108,15,0,W_CacheLumpName("M_OPTTTL",PU_CACHE));
+    V_DrawPatchDirect (108,15,0,W_CacheLumpName(DEH_String("M_OPTTTL"),PU_CACHE));
 	
     V_DrawPatchDirect (OptionsDef.x + 175,OptionsDef.y+LINEHEIGHT*detail,0,
-		       W_CacheLumpName(detailNames[detailLevel],PU_CACHE));
+		       W_CacheLumpName(DEH_String(detailNames[detailLevel]),
+			               PU_CACHE));
 
     V_DrawPatchDirect (OptionsDef.x + 120,OptionsDef.y+LINEHEIGHT*messages,0,
-		       W_CacheLumpName(msgNames[showMessages],PU_CACHE));
+		       W_CacheLumpName(DEH_String(msgNames[showMessages]),
+				       PU_CACHE));
 
     M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(mousesens+1),
 		 10,mouseSensitivity);
@@ -980,9 +1059,9 @@ void M_ChangeMessages(int choice)
     showMessages = 1 - showMessages;
 	
     if (!showMessages)
-	players[consoleplayer].message = MSGOFF;
+	players[consoleplayer].message = DEH_String(MSGOFF);
     else
-	players[consoleplayer].message = MSGON ;
+	players[consoleplayer].message = DEH_String(MSGON);
 
     message_dontfuckwithme = true;
 }
@@ -1012,11 +1091,11 @@ void M_EndGame(int choice)
 	
     if (netgame)
     {
-	M_StartMessage(NETEND,NULL,false);
+	M_StartMessage(DEH_String(NETEND),NULL,false);
 	return;
     }
 	
-    M_StartMessage(ENDGAME,M_EndGameResponse,true);
+    M_StartMessage(DEH_String(ENDGAME),M_EndGameResponse,true);
 }
 
 
@@ -1033,8 +1112,20 @@ void M_ReadThis(int choice)
 
 void M_ReadThis2(int choice)
 {
-    choice = 0;
-    M_SetupNextMenu(&ReadDef2);
+    // Doom 1.9 had two menus when playing Doom 1
+    // All others had only one
+
+    if (gameversion == exe_doom_1_9 && gamemode != commercial)
+    {
+        choice = 0;
+        M_SetupNextMenu(&ReadDef2);
+    }
+    else
+    {
+        // Close the menu
+
+        M_FinishReadThis(0);
+    }
 }
 
 void M_FinishReadThis(int choice)
@@ -1091,18 +1182,34 @@ void M_QuitResponse(int ch)
 }
 
 
+static char *M_SelectEndMessage(void)
+{
+    char **endmsg;
+
+    if (gamemission == doom)
+    {
+        // Doom 1
+
+        endmsg = doom1_endmsg;
+    }
+    else
+    {
+        // Doom 2
+        
+        endmsg = doom2_endmsg;
+    }
+
+    return endmsg[gametic % NUM_QUITMESSAGES];
+}
 
 
 void M_QuitDOOM(int choice)
 {
-  // We pick index 0 which is language sensitive,
-  //  or one at random, between 1 and maximum number.
-  if (language != english )
-    sprintf(endstring,"%s\n\n"DOSY, endmsg[0] );
-  else
-    sprintf(endstring,"%s\n\n"DOSY, endmsg[ (gametic%(NUM_QUITMESSAGES-2))+1 ]);
+    sprintf(endstring, "%s\n\n%s",
+            DEH_String(M_SelectEndMessage()),
+            DEH_String(DOSY));
   
-  M_StartMessage(endstring,M_QuitResponse,true);
+    M_StartMessage(endstring,M_QuitResponse,true);
 }
 
 
@@ -1131,17 +1238,12 @@ void M_ChangeDetail(int choice)
     choice = 0;
     detailLevel = 1 - detailLevel;
 
-    // FIXME - does not work. Remove anyway?
-    fprintf( stderr, "M_ChangeDetail: low detail mode n.a.\n");
-
-    return;
-    
-    /*R_SetViewSize (screenblocks, detailLevel);
+    R_SetViewSize (screenblocks, detailLevel);
 
     if (!detailLevel)
-	players[consoleplayer].message = DETAILHI;
+	players[consoleplayer].message = DEH_String(DETAILHI);
     else
-	players[consoleplayer].message = DETAILLO;*/
+	players[consoleplayer].message = DEH_String(DETAILLO);
 }
 
 
@@ -1188,17 +1290,17 @@ M_DrawThermo
     int		i;
 
     xx = x;
-    V_DrawPatchDirect (xx,y,0,W_CacheLumpName("M_THERML",PU_CACHE));
+    V_DrawPatchDirect (xx,y,0,W_CacheLumpName(DEH_String("M_THERML"),PU_CACHE));
     xx += 8;
     for (i=0;i<thermWidth;i++)
     {
-	V_DrawPatchDirect (xx,y,0,W_CacheLumpName("M_THERMM",PU_CACHE));
+	V_DrawPatchDirect (xx,y,0,W_CacheLumpName(DEH_String("M_THERMM"),PU_CACHE));
 	xx += 8;
     }
-    V_DrawPatchDirect (xx,y,0,W_CacheLumpName("M_THERMR",PU_CACHE));
+    V_DrawPatchDirect (xx,y,0,W_CacheLumpName(DEH_String("M_THERMR"),PU_CACHE));
 
     V_DrawPatchDirect ((x+8) + thermDot*8,y,
-		       0,W_CacheLumpName("M_THERMO",PU_CACHE));
+		       0,W_CacheLumpName(DEH_String("M_THERMO"),PU_CACHE));
 }
 
 
@@ -1209,7 +1311,7 @@ M_DrawEmptyCell
   int		item )
 {
     V_DrawPatchDirect (menu->x - 10,        menu->y+item*LINEHEIGHT - 1, 0,
-		       W_CacheLumpName("M_CELL1",PU_CACHE));
+		       W_CacheLumpName(DEH_String("M_CELL1"),PU_CACHE));
 }
 
 void
@@ -1218,7 +1320,7 @@ M_DrawSelCell
   int		item )
 {
     V_DrawPatchDirect (menu->x - 10,        menu->y+item*LINEHEIGHT - 1, 0,
-		       W_CacheLumpName("M_CELL2",PU_CACHE));
+		       W_CacheLumpName(DEH_String("M_CELL2"),PU_CACHE));
 }
 
 
@@ -1596,8 +1698,8 @@ boolean M_Responder (event_t* ev)
 	    usegamma++;
 	    if (usegamma > 4)
 		usegamma = 0;
-	    players[consoleplayer].message = gammamsg[usegamma];
-	    I_SetPalette (W_CacheLumpName ("PLAYPAL",PU_CACHE));
+	    players[consoleplayer].message = DEH_String(gammamsg[usegamma]);
+            I_SetPalette (W_CacheLumpName ("PLAYPAL",PU_CACHE));
 	    return true;
 				
 	}
@@ -1754,21 +1856,24 @@ void M_Drawer (void)
 	y = 100 - M_StringHeight(messageString)/2;
 	while(*(messageString+start))
 	{
+	    int foundnewline = 0;
+
 	    for (i = 0;i < strlen(messageString+start);i++)
 		if (*(messageString+start+i) == '\n')
 		{
 		    memset(string,0,40);
 		    strncpy(string,messageString+start,i);
+		    foundnewline = 1;
 		    start += i+1;
 		    break;
 		}
 				
-	    if (i == strlen(messageString+start))
+	    if (!foundnewline)
 	    {
 		strcpy(string,messageString+start);
-		start += i;
+		start += strlen(string);
 	    }
-				
+
 	    x = 160 - M_StringWidth(string)/2;
 	    M_WriteText(x,y,string);
 	    y += SHORT(hu_font[0]->height);
@@ -1790,15 +1895,21 @@ void M_Drawer (void)
     for (i=0;i<max;i++)
     {
 	if (currentMenu->menuitems[i].name[0])
-	    V_DrawPatchDirect (x,y,0,
-			       W_CacheLumpName(currentMenu->menuitems[i].name ,PU_CACHE));
+	{
+	    char *lumpname;
+
+	    lumpname = DEH_String(currentMenu->menuitems[i].name);
+
+	    V_DrawPatchDirect (x,y,0, W_CacheLumpName(lumpname, PU_CACHE));
+	}
 	y += LINEHEIGHT;
     }
 
     
     // DRAW SKULL
     V_DrawPatchDirect(x + SKULLXOFF,currentMenu->y - 5 + itemOn*LINEHEIGHT, 0,
-		      W_CacheLumpName(skullName[whichSkull],PU_CACHE));
+		      W_CacheLumpName(DEH_String(skullName[whichSkull]),
+				      PU_CACHE));
 
 }
 
@@ -1862,17 +1973,11 @@ void M_Init (void)
     switch ( gamemode )
     {
       case commercial:
-	// This is used because DOOM 2 had only one HELP
-        //  page. I use CREDIT as second page now, but
-	//  kept this hack for educational purposes.
+        // Commercial has no "read this" entry.
 	MainMenu[readthis] = MainMenu[quitdoom];
 	MainDef.numitems--;
 	MainDef.y += 8;
 	NewDef.prevMenu = &MainDef;
-	ReadDef1.routine = M_DrawReadThis1;
-	ReadDef1.x = 330;
-	ReadDef1.y = 165;
-	ReadMenu1[0].routine = M_FinishReadThis;
 	break;
       case shareware:
 	// Episode 2 and 3 are handled,

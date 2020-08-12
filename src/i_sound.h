@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: i_sound.h 271 2006-01-08 17:51:53Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,6 +16,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
 //
 // DESCRIPTION:
 //	System interface, sound.
@@ -25,13 +31,6 @@
 #define __I_SOUND__
 
 #include "doomdef.h"
-
-// UNIX hack, to be removed.
-#ifdef SNDSERV
-#include <stdio.h>
-extern FILE* sndserver;
-extern char* sndserver_filename;
-#endif
 
 #include "doomstat.h"
 #include "sounds.h"
@@ -64,6 +63,7 @@ int I_GetSfxLumpNum (sfxinfo_t* sfxinfo );
 int
 I_StartSound
 ( int		id,
+  int           channel,
   int		vol,
   int		sep,
   int		pitch,
@@ -91,33 +91,65 @@ I_UpdateSoundParams
 //
 //  MUSIC I/O
 //
+
 void I_InitMusic(void);
 void I_ShutdownMusic(void);
+
 // Volume.
+
 void I_SetMusicVolume(int volume);
+
 // PAUSE game handling.
-void I_PauseSong(int handle);
-void I_ResumeSong(int handle);
+
+void I_PauseSong(void *handle);
+void I_ResumeSong(void *handle);
+
 // Registers a song handle to song data.
-int I_RegisterSong(void *data);
+
+void *I_RegisterSong(void *data, int length);
+
 // Called by anything that wishes to start music.
 //  plays a song, and when the song is done,
 //  starts playing it again in an endless loop.
 // Horrible thing to do, considering.
-void
-I_PlaySong
-( int		handle,
-  int		looping );
-// Stops a song over 3 seconds.
-void I_StopSong(int handle);
-// See above (register), then think backwards
-void I_UnRegisterSong(int handle);
 
+void I_PlaySong(void *handle, int looping);
+
+// Stops a song over 3 seconds.
+
+void I_StopSong(void *handle);
+
+// See above (register), then think backwards
+
+void I_UnRegisterSong(void *handle);
+
+boolean I_QrySongPlaying(void *handle);
 
 
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.6  2006/01/08 17:51:53  fraggle
+// Add S_MusicPlaying function to query if music is still playing.
+//
+// Revision 1.5  2005/09/05 22:50:56  fraggle
+// Add mmus2mid code from prboom.  Use 'void *' for music handles.  Pass
+// length of data when registering music.
+//
+// Revision 1.4  2005/09/05 20:32:18  fraggle
+// Use the system-nonspecific sound code to assign the channel number used
+// by SDL.  Remove handle tagging stuff.
+//
+// Revision 1.3  2005/08/04 21:48:32  fraggle
+// Turn on compiler optimisation and warning options
+// Add SDL_mixer sound code
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:46  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

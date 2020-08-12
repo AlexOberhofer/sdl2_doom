@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_mobj.c 355 2006-01-29 15:05:11Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,12 +16,39 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.5.2.1  2006/01/29 15:05:11  fraggle
+// Allow map things of type <= 0 - these are ignored by Vanilla Doom.  Provides compatibility with plutonia.wad map12.
+//
+// Revision 1.5  2005/10/24 18:50:39  fraggle
+// Allow the game version to emulate to be specified from the command line
+// and set compatibility options accordingly.
+//
+// Revision 1.4  2005/10/13 22:23:55  fraggle
+// Fix logic for lost soul bounce
+//
+// Revision 1.3  2005/07/23 17:46:19  fraggle
+// Import bouncing lost soul fix from prboom
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:41  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Moving object handling. Spawn functions.
 //
 //-----------------------------------------------------------------------------
+
+static const char
+rcsid[] = "$Id: p_mobj.c 355 2006-01-29 15:05:11Z fraggle $";
 
 #include "i_system.h"
 #include "z_zone.h"
@@ -286,7 +314,29 @@ void P_ZMovement (mobj_t* mo)
 	// Note (id):
 	//  somebody left this after the setting momz to 0,
 	//  kinda useless there.
-	if (mo->flags & MF_SKULLFLY)
+	//
+	// cph - This was the a bug in the linuxdoom-1.10 source which
+	//  caused it not to sync Doom 2 v1.9 demos. Someone
+	//  added the above comment and moved up the following code. So
+	//  demos would desync in close lost soul fights.
+	// Note that this only applies to original Doom 1 or Doom2 demos - not
+	//  Final Doom and Ultimate Doom.  So we test demo_compatibility *and*
+	//  gamemission. (Note we assume that Doom1 is always Ult Doom, which
+	//  seems to hold for most published demos.)
+        //  
+        //  fraggle - cph got the logic here slightly wrong.  There are three
+        //  versions of Doom 1.9:
+        //
+        //  * The version used in registered doom 1.9 + doom2 - no bounce
+        //  * The version used in ultimate doom - has bounce
+        //  * The version used in final doom - has bounce
+        //
+        // So we need to check that this is either retail or commercial
+        // (but not doom2)
+	
+	int correct_lost_soul_bounce = gameversion >= exe_ultimate;
+
+	if (correct_lost_soul_bounce && mo->flags & MF_SKULLFLY)
 	{
 	    // the skull slammed into something
 	    mo->momz = -mo->momz;
@@ -307,6 +357,16 @@ void P_ZMovement (mobj_t* mo)
 	    mo->momz = 0;
 	}
 	mo->z = mo->floorz;
+
+
+	// cph 2001/05/26 -
+	// See lost soul bouncing comment above. We need this here for bug
+	// compatibility with original Doom2 v1.9 - if a soul is charging and
+	// hit by a raising floor this incorrectly reverses its Y momentum.
+	//
+
+        if (!correct_lost_soul_bounce && mo->flags & MF_SKULLFLY)
+            mo->momz = -mo->momz;
 
 	if ( (mo->flags & MF_MISSILE)
 	     && !(mo->flags & MF_NOCLIP) )
@@ -721,6 +781,14 @@ void P_SpawnMapThing (mapthing_t* mthing)
 	    deathmatch_p++;
 	}
 	return;
+    }
+
+    if (mthing->type <= 0)
+    {
+        // Thing type 0 is actually "player -1 start".  
+        // For some reason, Vanilla Doom accepts/ignores this.
+
+        return;
     }
 	
     // check for players specially

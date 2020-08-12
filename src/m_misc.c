@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: m_misc.c 368 2006-02-15 12:58:27Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,8 +16,89 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
-// $Log:$
+//
+// $Log$
+// Revision 1.17.2.3  2006/02/15 12:58:27  fraggle
+// Remove the savegame buffer entirely.  Keep the old savegame size limit bug add a "vanilla_savegame_limit" config file option which allows
+// the limit to be disabled if necessary.
+//
+// Revision 1.17.2.2  2006/01/20 19:46:14  fraggle
+// Fix crash due to buffer not allocated large enough
+//
+// Revision 1.17.2.1  2006/01/20 00:58:17  fraggle
+// Remove new networking code from stable version
+//
+// Revision 1.17  2006/01/10 22:14:13  fraggle
+// Shut up compiler warnings
+//
+// Revision 1.16  2006/01/09 01:50:51  fraggle
+// Deduce a sane player name by examining environment variables.  Add
+// a "player_name" setting to chocolate-doom.cfg.  Transmit the name
+// to the server and use the names players send in the waiting data list.
+//
+// Revision 1.15  2006/01/08 18:22:39  fraggle
+// Strip carriage returns from the end of lines when reading configuration
+// files.
+//
+// Revision 1.14  2006/01/08 18:13:33  fraggle
+// show_endoom config file option to disable the endoom screen
+//
+// Revision 1.13  2005/10/16 01:18:10  fraggle
+// Global "configdir" variable with directory to store config files in.
+// Create a function to find the filename for a savegame slot.  Store
+// savegames in the config dir.
+//
+// Revision 1.12  2005/09/17 20:50:46  fraggle
+// Mouse acceleration code to emulate old DOS drivers
+//
+// Revision 1.11  2005/09/17 20:25:56  fraggle
+// Set the default values for variables in their initialisers.  Remove the
+// "defaultvalue" parameter and associated code from the configuration
+// file parsing code.
+//
+// Revision 1.10  2005/09/17 20:06:45  fraggle
+// Rewrite configuration loading code; assign a type to each configuration
+// parameter.  Allow float parameters, align all values in the configuration
+// files
+//
+// Revision 1.9  2005/09/11 20:25:56  fraggle
+// Second configuration file to allow chocolate doom-specific settings.
+// Adjust some existing command line logic (for graphics settings and
+// novert) to adjust for this.
+//
+// Revision 1.8  2005/09/07 21:40:11  fraggle
+// Remove non-ANSI C headers and functions
+//
+// Revision 1.7  2005/09/07 12:34:47  fraggle
+// Maintain dos-specific options in config file
+//
+// Revision 1.6  2005/08/04 21:48:32  fraggle
+// Turn on compiler optimisation and warning options
+// Add SDL_mixer sound code
+//
+// Revision 1.5  2005/08/04 18:42:15  fraggle
+// Silence compiler warnings
+//
+// Revision 1.4  2005/07/24 02:14:04  fraggle
+// Move to SDL for graphics.
+// Translate key scancodes to correct internal format when reading
+// settings from config file - backwards compatible with config files
+// for original exes
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:53  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Main loop menu stuff.
@@ -25,15 +107,23 @@
 //
 //-----------------------------------------------------------------------------
 
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <unistd.h>
+static const char
+rcsid[] = "$Id: m_misc.c 368 2006-02-15 12:58:27Z fraggle $";
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 
+// for mkdir:
 
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
+#include "config.h"
 #include "doomdef.h"
 
 #include "z_zone.h"
@@ -103,26 +193,18 @@ M_DrawText
 //
 // M_WriteFile
 //
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
-
-boolean
-M_WriteFile
-( char const*	name,
-  void*		source,
-  int		length )
+boolean M_WriteFile(char const *name, void *source, int	length)
 {
-    int		handle;
-    int		count;
+    FILE *handle;
+    int	count;
 	
-    handle = open ( name, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
+    handle = fopen(name, "wb");
 
-    if (handle == -1)
+    if (handle == NULL)
 	return false;
 
-    count = write (handle, source, length);
-    close (handle);
+    count = fwrite(source, 1, length, handle);
+    fclose(handle);
 	
     if (count < length)
 	return false;
@@ -134,24 +216,26 @@ M_WriteFile
 //
 // M_ReadFile
 //
-int
-M_ReadFile
-( char const*	name,
-  byte**	buffer )
+int M_ReadFile(char const *name, byte **buffer)
 {
-    int	handle, count, length;
-    struct stat	fileinfo;
-    byte		*buf;
+    FILE *handle;
+    int	count, length;
+    byte *buf;
 	
-    handle = open (name, O_RDONLY | O_BINARY, 0666);
-    if (handle == -1)
+    handle = fopen(name, "rb");
+    if (handle == NULL)
 	I_Error ("Couldn't read file %s", name);
-    if (fstat (handle,&fileinfo) == -1)
-	I_Error ("Couldn't read file %s", name);
-    length = fileinfo.st_size;
+
+    // find the size of the file by seeking to the end and
+    // reading the current position
+
+    fseek(handle, 0, SEEK_END);
+    length = ftell(handle);
+    fseek(handle, 0, SEEK_SET);
+    
     buf = Z_Malloc (length, PU_STATIC, NULL);
-    count = read (handle, buf, length);
-    close (handle);
+    count = fread(buf, 1, length, handle);
+    fclose (handle);
 	
     if (count < length)
 	I_Error ("Couldn't read file %s", name);
@@ -164,8 +248,11 @@ M_ReadFile
 //
 // DEFAULTS
 //
-int		usemouse;
-int		usejoystick;
+
+// locations of config files
+
+int		usemouse = 1;
+int		usejoystick = 0;
 
 extern int	key_right;
 extern int	key_left;
@@ -205,199 +292,379 @@ extern int	showMessages;
 extern	int	numChannels;
 
 
-// UNIX hack, to be removed.
-#ifdef SNDSERV
-extern char*	sndserver_filename;
-extern int	mb_used;
-#endif
-
-#ifdef LINUX
-char*		mousetype;
-char*		mousedev;
-#endif
-
 extern char*	chat_macros[];
 
+extern int      show_endoom;
+extern int      vanilla_savegame_limit;
 
+// dos specific options: these are unused but should be maintained
+// so that the config file can be shared between chocolate
+// doom and doom.exe
+
+static int snd_musicdevice = 0;
+static int snd_sfxdevice = 0;
+static int snd_sbport = 0;
+static int snd_sbirq = 0;
+static int snd_sbdma = 0;
+static int snd_mport = 0;
+
+typedef enum 
+{
+    DEFAULT_INT,
+    DEFAULT_STRING,
+    DEFAULT_FLOAT,
+    DEFAULT_KEY,
+} default_type_t;
 
 typedef struct
 {
-    char*	name;
-    int*	location;
-    intptr_t		defaultvalue;
-    int		scantranslate;		// PC scan code hack
-    int		untranslated;		// lousy hack
+    char *         name;
+    void *         location;
+    default_type_t type;
+    int            untranslated;
 } default_t;
 
-default_t	defaults[] =
+typedef struct
 {
-    {"mouse_sensitivity",&mouseSensitivity, 5},
-    {"sfx_volume",&snd_SfxVolume, 8},
-    {"music_volume",&snd_MusicVolume, 8},
-    {"show_messages",&showMessages, 1},
-    
+    default_t *defaults;
+    int        numdefaults;
+    char      *filename;
+} default_collection_t;
 
-#ifdef NORMALUNIX
-    {"key_right",&key_right, KEY_RIGHTARROW},
-    {"key_left",&key_left, KEY_LEFTARROW},
-    {"key_up",&key_up, KEY_UPARROW},
-    {"key_down",&key_down, KEY_DOWNARROW},
-    {"key_strafeleft",&key_strafeleft, ','},
-    {"key_straferight",&key_straferight, '.'},
+static default_t	doom_defaults_list[] =
+{
+    {"mouse_sensitivity", &mouseSensitivity},
+    {"sfx_volume",&snd_SfxVolume},
+    {"music_volume",&snd_MusicVolume},
+    {"show_messages",&showMessages},
 
-    {"key_fire",&key_fire, KEY_RCTRL},
-    {"key_use",&key_use, ' '},
-    {"key_strafe",&key_strafe, KEY_RALT},
-    {"key_speed",&key_speed, KEY_RSHIFT},
+    {"key_right",&key_right, DEFAULT_KEY},
+    {"key_left",&key_left, DEFAULT_KEY},
+    {"key_up",&key_up, DEFAULT_KEY},
+    {"key_down",&key_down, DEFAULT_KEY},
+    {"key_strafeleft",&key_strafeleft, DEFAULT_KEY},
+    {"key_straferight",&key_straferight, DEFAULT_KEY},
 
-// UNIX hack, to be removed. 
-#ifdef SNDSERV
-    {"sndserver", (int *) &sndserver_filename, (intptr_t) "sndserver"},
-    {"mb_used", &mb_used, 2},
-#endif
-    
-#endif
+    {"key_fire",&key_fire, DEFAULT_KEY},
+    {"key_use",&key_use, DEFAULT_KEY},
+    {"key_strafe",&key_strafe, DEFAULT_KEY},
+    {"key_speed",&key_speed, DEFAULT_KEY},
 
-#ifdef LINUX
-    {"mousedev", (int*)&mousedev, (intptr_t)"/dev/ttyS0"},
-    {"mousetype", (int*)&mousetype, (intptr_t)"microsoft"},
-#endif
+    {"use_mouse",&usemouse},
+    {"mouseb_fire",&mousebfire},
+    {"mouseb_strafe",&mousebstrafe},
+    {"mouseb_forward",&mousebforward},
 
-    {"use_mouse",&usemouse, 1},
-    {"mouseb_fire",&mousebfire,0},
-    {"mouseb_strafe",&mousebstrafe,1},
-    {"mouseb_forward",&mousebforward,2},
+    {"use_joystick",&usejoystick},
+    {"joyb_fire",&joybfire},
+    {"joyb_strafe",&joybstrafe},
+    {"joyb_use",&joybuse},
+    {"joyb_speed",&joybspeed},
 
-    {"use_joystick",&usejoystick, 0},
-    {"joyb_fire",&joybfire,0},
-    {"joyb_strafe",&joybstrafe,1},
-    {"joyb_use",&joybuse,3},
-    {"joyb_speed",&joybspeed,2},
+    {"screenblocks",&screenblocks},
+    {"detaillevel",&detailLevel},
 
-    {"screenblocks",&screenblocks, 9},
-    {"detaillevel",&detailLevel, 0},
+    {"snd_channels",&numChannels},
 
-    {"snd_channels",&numChannels, 3},
+    {"snd_musicdevice", &snd_musicdevice},
+    {"snd_sfxdevice", &snd_sfxdevice},
+    {"snd_sbport", &snd_sbport},
+    {"snd_sbirq", &snd_sbirq},
+    {"snd_sbdma", &snd_sbdma},
+    {"snd_mport", &snd_mport},
 
+    {"usegamma",&usegamma},
 
-
-    {"usegamma",&usegamma, 0},
-
-    {"chatmacro0", (int *) &chat_macros[0], (intptr_t) HUSTR_CHATMACRO0 },
-    {"chatmacro1", (int *) &chat_macros[1], (intptr_t) HUSTR_CHATMACRO1 },
-    {"chatmacro2", (int *) &chat_macros[2], (intptr_t) HUSTR_CHATMACRO2 },
-    {"chatmacro3", (int *) &chat_macros[3], (intptr_t) HUSTR_CHATMACRO3 },
-    {"chatmacro4", (int *) &chat_macros[4], (intptr_t) HUSTR_CHATMACRO4 },
-    {"chatmacro5", (int *) &chat_macros[5], (intptr_t) HUSTR_CHATMACRO5 },
-    {"chatmacro6", (int *) &chat_macros[6], (intptr_t) HUSTR_CHATMACRO6 },
-    {"chatmacro7", (int *) &chat_macros[7], (intptr_t) HUSTR_CHATMACRO7 },
-    {"chatmacro8", (int *) &chat_macros[8], (intptr_t) HUSTR_CHATMACRO8 },
-    {"chatmacro9", (int *) &chat_macros[9], (intptr_t) HUSTR_CHATMACRO9 }
-
+    {"chatmacro0", &chat_macros[0], DEFAULT_STRING },
+    {"chatmacro1", &chat_macros[1], DEFAULT_STRING },
+    {"chatmacro2", &chat_macros[2], DEFAULT_STRING },
+    {"chatmacro3", &chat_macros[3], DEFAULT_STRING },
+    {"chatmacro4", &chat_macros[4], DEFAULT_STRING },
+    {"chatmacro5", &chat_macros[5], DEFAULT_STRING },
+    {"chatmacro6", &chat_macros[6], DEFAULT_STRING },
+    {"chatmacro7", &chat_macros[7], DEFAULT_STRING },
+    {"chatmacro8", &chat_macros[8], DEFAULT_STRING },
+    {"chatmacro9", &chat_macros[9], DEFAULT_STRING },
 };
 
-int	numdefaults;
-char*	defaultfile;
+static default_collection_t doom_defaults = 
+{
+    doom_defaults_list,
+    sizeof(doom_defaults_list) / sizeof(*doom_defaults_list),
+};
 
+static default_t extra_defaults_list[] = 
+{
+    {"grabmouse",              &grabmouse},
+    {"fullscreen",             &fullscreen},
+    {"screenmultiply",         &screenmultiply},
+    {"novert",                 &novert},
+    {"mouse_acceleration",     &mouse_acceleration,   DEFAULT_FLOAT},
+    {"show_endoom",            &show_endoom},
+    {"vanilla_savegame_limit", &vanilla_savegame_limit},
+};
+
+static default_collection_t extra_defaults =
+{
+    extra_defaults_list,
+    sizeof(extra_defaults_list) / sizeof(*extra_defaults_list),
+};
+
+static int scantokey[128] =
+{
+    0  ,    27,     '1',    '2',    '3',    '4',    '5',    '6',
+    '7',    '8',    '9',    '0',    '-',    '=',    KEY_BACKSPACE, 9,
+    'q',    'w',    'e',    'r',    't',    'y',    'u',    'i',
+    'o',    'p',    '[',    ']',    13,		KEY_RCTRL, 'a',    's',
+    'd',    'f',    'g',    'h',    'j',    'k',    'l',    ';',
+    '\'',   '`',    KEY_RSHIFT,'\\',   'z',    'x',    'c',    'v',
+    'b',    'n',    'm',    ',',    '.',    '/',    KEY_RSHIFT,KEYP_MULTIPLY,
+    KEY_RALT,  ' ',  KEY_CAPSLOCK,KEY_F1,  KEY_F2,   KEY_F3,   KEY_F4,   KEY_F5,
+    KEY_F6,   KEY_F7,   KEY_F8,   KEY_F9,   KEY_F10,  KEY_PAUSE,KEY_SCRLCK,KEY_HOME,
+    KEYP_UPARROW,KEY_PGUP,KEYP_MINUS,KEYP_LEFTARROW,KEYP_5,KEYP_RIGHTARROW,KEYP_PLUS,KEY_END,
+    KEYP_DOWNARROW,KEY_PGDN,KEY_INS,KEY_DEL,0,   0,      0,      KEY_F11,
+    KEY_F12,  0,      0,      0,      0,      0,      0,      0,
+    0,      0,      0,      0,      0,      0,      0,      0,
+    0,      0,      0,      0,      0,      0,      0,      0,
+    0,      0,      0,      0,      0,      0,      0,      0,
+    0,      0,      0,      0,      0,      0,      0,      0
+};
+
+
+static void SaveDefaultCollection(default_collection_t *collection)
+{
+    default_t *defaults;
+    int i, v;
+    FILE *f;
+	
+    f = fopen (collection->filename, "w");
+    if (!f)
+	return; // can't write the file, but don't complain
+
+    defaults = collection->defaults;
+		
+    for (i=0 ; i<collection->numdefaults ; i++)
+    {
+        int chars_written;
+
+        // Print the name and line up all values at 30 characters
+
+        chars_written = fprintf(f, "%s ", defaults[i].name);
+
+        for (; chars_written < 30; ++chars_written)
+            fprintf(f, " ");
+
+        // Print the value
+
+        switch (defaults[i].type) 
+        {
+            case DEFAULT_KEY:
+
+                // use the untranslated version if we can, to reduce
+                // the possibility of screwing up the user's config
+                // file
+                
+                v = * (int *) defaults[i].location;
+
+                if (defaults[i].untranslated)
+                {
+                    v = defaults[i].untranslated;
+                }
+                else
+                {
+                    // search for a reverse mapping back to a scancode
+                    // in the scantokey table
+
+                    int s;
+
+                    for (s=0; s<128; ++s)
+                    {
+                        if (scantokey[s] == v)
+                        {
+                            v = s;
+                            break;
+                        }
+                    }
+                }
+
+	        fprintf(f, "%i", v);
+                break;
+
+            case DEFAULT_INT:
+	        fprintf(f, "%i", * (int *) defaults[i].location);
+                break;
+
+            case DEFAULT_FLOAT:
+                fprintf(f, "%f", * (float *) defaults[i].location);
+                break;
+
+            case DEFAULT_STRING:
+	        fprintf(f,"\"%s\"", * (char **) (defaults[i].location));
+                break;
+        }
+
+        fprintf(f, "\n");
+    }
+
+    fclose (f);
+}
+
+// Parses integer values in the configuration file
+
+static int ParseIntParameter(char *strparm)
+{
+    int parm;
+
+    if (strparm[0] == '0' && strparm[1] == 'x')
+        sscanf(strparm+2, "%x", &parm);
+    else
+        sscanf(strparm, "%i", &parm);
+
+    return parm;
+}
+
+static void LoadDefaultCollection(default_collection_t *collection)
+{
+    default_t  *defaults = collection->defaults;
+    int		i;
+    FILE*	f;
+    char	defname[80];
+    char	strparm[100];
+
+    // read the file in, overriding any set defaults
+    f = fopen(collection->filename, "r");
+
+    if (!f)
+    {
+        // File not opened, but don't complain
+
+        return;
+    }
+    
+    while (!feof(f))
+    {
+        if (fscanf (f, "%79s %[^\n]\n", defname, strparm) != 2)
+        {
+            // This line doesn't match
+          
+            continue;
+        }
+
+        // Strip off trailing non-printable characters (\r characters
+        // from DOS text files)
+
+        while (strlen(strparm) > 0 && !isprint(strparm[strlen(strparm)-1]))
+        {
+            strparm[strlen(strparm)-1] = '\0';
+        }
+        
+        // Find the setting in the list
+       
+        for (i=0; i<collection->numdefaults; ++i)
+        {
+            default_t *def = &collection->defaults[i];
+            char *s;
+            int intparm;
+
+            if (strcmp(defname, def->name) != 0)
+            {
+                // not this one
+                continue;
+            }
+
+            // parameter found
+
+            switch (def->type)
+            {
+                case DEFAULT_STRING:
+                    s = strdup(strparm + 1);
+                    s[strlen(s) - 1] = '\0';
+                    * (char **) def->location = s;
+                    break;
+
+                case DEFAULT_INT:
+                    * (int *) def->location = ParseIntParameter(strparm);
+                    break;
+
+                case DEFAULT_KEY:
+
+                    // translate scancodes read from config
+                    // file (save the old value in untranslated)
+
+                    intparm = ParseIntParameter(strparm);
+                    defaults[i].untranslated = intparm;
+                    intparm = scantokey[intparm];
+
+                    * (int *) def->location = intparm;
+                    break;
+
+                case DEFAULT_FLOAT:
+                    * (float *) def->location = atof(strparm);
+                    break;
+            }
+
+            // finish
+
+            break; 
+        }
+    }
+            
+    fclose (f);
+}
 
 //
 // M_SaveDefaults
 //
+
 void M_SaveDefaults (void)
 {
-    int		i;
-    int		v;
-    FILE*	f;
-	
-    f = fopen (defaultfile, "w");
-    if (!f)
-	return; // can't write the file, but don't complain
-		
-    for (i=0 ; i<numdefaults ; i++)
-    {
-	if (defaults[i].defaultvalue > -0xfff
-	    && defaults[i].defaultvalue < 0xfff)
-	{
-	    v = *defaults[i].location;
-	    fprintf (f,"%s\t\t%i\n",defaults[i].name,v);
-	} else {
-	    fprintf (f,"%s\t\t\"%s\"\n",defaults[i].name,
-		     * (char **) (defaults[i].location));
-	}
-    }
-	
-    fclose (f);
+    SaveDefaultCollection(&doom_defaults);
+    SaveDefaultCollection(&extra_defaults);
 }
 
 
 //
 // M_LoadDefaults
 //
-extern byte	scantokey[128];
 
 void M_LoadDefaults (void)
 {
-    int		i;
-    int		len;
-    FILE*	f;
-    char	def[80];
-    char	strparm[100];
-    char*	newstring;
-    int		parm;
-    boolean	isstring;
-    
-    // set everything to base values
-    numdefaults = sizeof(defaults)/sizeof(defaults[0]);
-    for (i=0 ; i<numdefaults ; i++)
-	*defaults[i].location = defaults[i].defaultvalue;
-    
+    int i;
+ 
     // check for a custom default file
     i = M_CheckParm ("-config");
+
     if (i && i<myargc-1)
     {
-	defaultfile = myargv[i+1];
-	printf ("	default file: %s\n",defaultfile);
+	doom_defaults.filename = myargv[i+1];
+	printf ("	default file: %s\n",doom_defaults.filename);
     }
     else
-	defaultfile = basedefault;
-    
-    // read the file in, overriding any set defaults
-    f = fopen (defaultfile, "r");
-    if (f)
     {
-	while (!feof(f))
-	{
-	    isstring = false;
-	    if (fscanf (f, "%79s %[^\n]\n", def, strparm) == 2)
-	    {
-		if (strparm[0] == '"')
-		{
-		    // get a string default
-		    isstring = true;
-		    len = strlen(strparm);
-		    newstring = (char *) malloc(len);
-		    strparm[len-1] = 0;
-		    strcpy(newstring, strparm+1);
-		}
-		else if (strparm[0] == '0' && strparm[1] == 'x')
-		    sscanf(strparm+2, "%x", &parm);
-		else
-		    sscanf(strparm, "%i", &parm);
-		for (i=0 ; i<numdefaults ; i++)
-		    if (!strcmp(def, defaults[i].name))
-		    {
-			if (!isstring)
-			    *defaults[i].location = parm;
-			else
-			    *defaults[i].location =
-				(int) newstring;
-			break;
-		    }
-	    }
-	}
-		
-	fclose (f);
+        doom_defaults.filename = malloc(strlen(configdir) + 20);
+        sprintf(doom_defaults.filename, "%sdefault.cfg", configdir);
     }
+
+    printf("saving config in %s\n", doom_defaults.filename);
+
+    i = M_CheckParm("-extraconfig");
+
+    if (i && i<myargc-1)
+    {
+        extra_defaults.filename = myargv[i+1];
+        printf("        extra configuration file: %s\n", 
+               extra_defaults.filename);
+    }
+    else
+    {
+        extra_defaults.filename 
+            = malloc(strlen(configdir) + strlen(PACKAGE_TARNAME) + 10);
+        sprintf(extra_defaults.filename, "%s%s.cfg", 
+                configdir, PACKAGE_TARNAME);
+    }
+
+    LoadDefaultCollection(&doom_defaults);
+    LoadDefaultCollection(&extra_defaults);
 }
 
 
@@ -494,6 +761,22 @@ WritePCXfile
     Z_Free (pcx);
 }
 
+static boolean FileExists(char *filename)
+{
+    FILE *handle;
+
+    handle = fopen(filename, "rb");
+
+    if (handle != NULL)
+    {
+        fclose(handle);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 //
 // M_ScreenShot
@@ -515,7 +798,7 @@ void M_ScreenShot (void)
     {
 	lbmname[4] = i/10 + '0';
 	lbmname[5] = i%10 + '0';
-	if (access(lbmname,0) == -1)
+	if (!FileExists(lbmname))
 	    break;	// file doesn't exist
     }
     if (i==100)

@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_spec.c 345 2006-01-25 17:40:03Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,24 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.3.2.1  2006/01/25 17:40:03  fraggle
+// Allow overriding the animation texture/flat names via dehacked
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:50  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Implements special effects:
@@ -26,11 +44,15 @@
 //
 //-----------------------------------------------------------------------------
 
+static const char
+rcsid[] = "$Id: p_spec.c 345 2006-01-25 17:40:03Z fraggle $";
+
 #include <stdlib.h>
 
 #include "doomdef.h"
 #include "doomstat.h"
 
+#include "deh_main.h"
 #include "i_system.h"
 #include "z_zone.h"
 #include "m_argv.h"
@@ -152,22 +174,27 @@ void P_InitPicAnims (void)
     lastanim = anims;
     for (i=0 ; animdefs[i].istexture != -1 ; i++)
     {
+        char *startname, *endname;
+
+        startname = DEH_String(animdefs[i].startname);
+        endname = DEH_String(animdefs[i].endname);
+
 	if (animdefs[i].istexture)
 	{
 	    // different episode ?
-	    if (R_CheckTextureNumForName(animdefs[i].startname) == -1)
+	    if (R_CheckTextureNumForName(startname) == -1)
 		continue;	
 
-	    lastanim->picnum = R_TextureNumForName (animdefs[i].endname);
-	    lastanim->basepic = R_TextureNumForName (animdefs[i].startname);
+	    lastanim->picnum = R_TextureNumForName(endname);
+	    lastanim->basepic = R_TextureNumForName(startname);
 	}
 	else
 	{
 	    if (W_CheckNumForName(animdefs[i].startname) == -1)
 		continue;
 
-	    lastanim->picnum = R_FlatNumForName (animdefs[i].endname);
-	    lastanim->basepic = R_FlatNumForName (animdefs[i].startname);
+	    lastanim->picnum = R_FlatNumForName(endname);
+	    lastanim->basepic = R_FlatNumForName(startname);
 	}
 
 	lastanim->istexture = animdefs[i].istexture;
@@ -175,8 +202,7 @@ void P_InitPicAnims (void)
 
 	if (lastanim->numpics < 2)
 	    I_Error ("P_InitPicAnims: bad cycle from %s to %s",
-		     animdefs[i].startname,
-		     animdefs[i].endname);
+		     startname, endname);
 	
 	lastanim->speed = animdefs[i].speed;
 	lastanim++;
@@ -382,7 +408,7 @@ P_FindLowestCeilingSurrounding(sector_t* sec)
     int			i;
     line_t*		check;
     sector_t*		other;
-    fixed_t		height = MAXINT;
+    fixed_t		height = INT_MAX;
 	
     for (i=0 ;i < sec->linecount ; i++)
     {

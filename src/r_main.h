@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: r_main.h 45 2005-08-06 18:37:47Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,6 +15,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
 //
 // DESCRIPTION:
 //	System specific interface stuff.
@@ -28,9 +34,6 @@
 #include "r_data.h"
 
 
-#ifdef __GNUG__
-#pragma interface
-#endif
 
 
 //
@@ -99,6 +102,7 @@ extern	int		detailshift;
 // Used to select shadow mode etc.
 //
 extern void		(*colfunc) (void);
+extern void		(*transcolfunc) (void);
 extern void		(*basecolfunc) (void);
 extern void		(*fuzzcolfunc) (void);
 // No shadow effects on floors.
@@ -168,6 +172,18 @@ void R_SetViewSize (int blocks, int detail);
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.4  2005/08/06 18:37:47  fraggle
+// Fix low resolution mode
+//
+// Revision 1.3  2005/07/23 18:56:07  fraggle
+// Remove unneccessary pragmas
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:19:58  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------

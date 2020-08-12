@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: s_sound.c 317 2006-01-22 21:20:13Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,11 +16,60 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.10.2.1  2006/01/22 21:20:13  fraggle
+// Dehacked string replacements for sound and music lump names
+//
+// Revision 1.10  2006/01/08 17:51:53  fraggle
+// Add S_MusicPlaying function to query if music is still playing.
+//
+// Revision 1.9  2005/10/16 16:16:03  fraggle
+// Set the default number of channels to a more sensible 8
+//
+// Revision 1.8  2005/10/08 18:34:12  fraggle
+// Print startup message to stdout, not stderr
+//
+// Revision 1.7  2005/09/17 20:25:56  fraggle
+// Set the default values for variables in their initialisers.  Remove the
+// "defaultvalue" parameter and associated code from the configuration
+// file parsing code.
+//
+// Revision 1.6  2005/09/05 22:50:56  fraggle
+// Add mmus2mid code from prboom.  Use 'void *' for music handles.  Pass
+// length of data when registering music.
+//
+// Revision 1.5  2005/09/05 20:32:18  fraggle
+// Use the system-nonspecific sound code to assign the channel number used
+// by SDL.  Remove handle tagging stuff.
+//
+// Revision 1.4  2005/08/04 21:48:32  fraggle
+// Turn on compiler optimisation and warning options
+// Add SDL_mixer sound code
+//
+// Revision 1.3  2005/08/04 18:42:15  fraggle
+// Silence compiler warnings
+//
+// Revision 1.2  2005/07/23 16:44:57  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:29  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:  none
 //
 //-----------------------------------------------------------------------------
+
+
+static const char
+rcsid[] = "$Id: s_sound.c 317 2006-01-22 21:20:13Z fraggle $";
+
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +79,7 @@
 #include "sounds.h"
 #include "s_sound.h"
 
+#include "deh_main.h"
 #include "z_zone.h"
 #include "m_random.h"
 #include "w_wad.h"
@@ -105,10 +156,10 @@ static channel_t*	channels;
 // These are not used, but should be (menu).
 // Maximum volume of a sound effect.
 // Internal default is max out of 0-15.
-int 		snd_SfxVolume = 15;
+int 		snd_SfxVolume = 8;
 
 // Maximum volume of music. Useless so far.
-int 		snd_MusicVolume = 15; 
+int 		snd_MusicVolume = 8; 
 
 
 
@@ -121,7 +172,8 @@ static musicinfo_t*	mus_playing=0;
 // following is set
 //  by the defaults code in M_misc:
 // number of channels available
-int			numChannels;	
+
+int			numChannels = 8;
 
 static int		nextcleanup;
 
@@ -159,7 +211,7 @@ void S_Init
 {  
   int		i;
 
-  fprintf( stderr, "S_Init: default sfx volume %d\n", sfxVolume);
+  printf("S_Init: default sfx volume %d\n", sfxVolume);
 
   // Whatever these did with DMX, these are rather dummies now.
   I_SetChannels();
@@ -359,30 +411,14 @@ S_StartSoundAtVolume
   if (sfx->lumpnum < 0)
     sfx->lumpnum = I_GetSfxLumpNum(sfx);
 
-#ifndef SNDSRV
-  // cache data if necessary
-  if (!sfx->data)
-  {
-    fprintf( stderr,
-	     "S_StartSoundAtVolume: 16bit and not pre-cached - wtf?\n");
-
-    // DOS remains, 8bit handling
-    //sfx->data = (void *) W_CacheLumpNum(sfx->lumpnum, PU_MUSIC);
-    // fprintf( stderr,
-    //	     "S_StartSoundAtVolume: loading %d (lump %d) : 0x%x\n",
-    //       sfx_id, sfx->lumpnum, (int)sfx->data );
-    
-  }
-#endif
-  
   // increase the usefulness
   if (sfx->usefulness++ < 0)
     sfx->usefulness = 1;
-  
+
   // Assigns the handle to one of the channels in the
   //  mix/output buffer.
   channels[cnum].handle = I_StartSound(sfx_id,
-				       /*sfx->data,*/
+                                       cnum,
 				       volume,
 				       sep,
 				       pitch,
@@ -646,7 +682,7 @@ S_ChangeMusic
 ( int			musicnum,
   int			looping )
 {
-    musicinfo_t*	music;
+    musicinfo_t*	music = NULL;
     char		namebuf[9];
 
     if ( (musicnum <= mus_None)
@@ -666,18 +702,23 @@ S_ChangeMusic
     // get lumpnum if neccessary
     if (!music->lumpnum)
     {
-	sprintf(namebuf, "d_%s", music->name);
+	sprintf(namebuf, "d_%s", DEH_String(music->name));
 	music->lumpnum = W_GetNumForName(namebuf);
     }
 
     // load & register it
     music->data = (void *) W_CacheLumpNum(music->lumpnum, PU_MUSIC);
-    music->handle = I_RegisterSong(music->data);
+    music->handle = I_RegisterSong(music->data, W_LumpLength(music->lumpnum));
 
     // play it
     I_PlaySong(music->handle, looping);
 
     mus_playing = music;
+}
+
+boolean S_MusicPlaying(void)
+{
+    return I_QrySongPlaying(NULL);
 }
 
 
@@ -696,9 +737,6 @@ void S_StopMusic(void)
 	mus_playing = 0;
     }
 }
-
-
-
 
 void S_StopChannel(int cnum)
 {

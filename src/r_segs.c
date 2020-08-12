@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: r_segs.c 37 2005-08-04 18:42:15Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,12 +16,37 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.4  2005/08/04 18:42:15  fraggle
+// Silence compiler warnings
+//
+// Revision 1.3  2005/07/23 19:17:11  fraggle
+// Use ANSI-standard limit constants.  Remove LINUX define.
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:01  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	All the clipping: columns, horizontal spans, sky columns.
 //
 //-----------------------------------------------------------------------------
+
+
+static const char
+rcsid[] = "$Id: r_segs.c 37 2005-08-04 18:42:15Z fraggle $";
+
+
+
+
 
 #include <stdlib.h>
 
@@ -155,7 +181,7 @@ R_RenderMaskedSegRange
     for (dc_x = x1 ; dc_x <= x2 ; dc_x++)
     {
 	// calculate lighting
-	if (maskedtexturecol[dc_x] != MAXSHORT)
+	if (maskedtexturecol[dc_x] != SHRT_MAX)
 	{
 	    if (!fixedcolormap)
 	    {
@@ -175,7 +201,7 @@ R_RenderMaskedSegRange
 		(byte *)R_GetColumn(texnum,maskedtexturecol[dc_x]) -3);
 			
 	    R_DrawMaskedColumn (col);
-	    maskedtexturecol[dc_x] = MAXSHORT;
+	    maskedtexturecol[dc_x] = SHRT_MAX;
 	}
 	spryscale += rw_scalestep;
     }
@@ -207,8 +233,6 @@ void R_RenderSegLoop (void)
     int			top;
     int			bottom;
 
-    //texturecolumn = 0;				// shut up compiler warning
-	
     for ( ; rw_x < rw_stopx ; rw_x++)
     {
 	// mark floor / ceiling areas
@@ -268,6 +292,12 @@ void R_RenderSegLoop (void)
 	    dc_x = rw_x;
 	    dc_iscale = 0xffffffffu / (unsigned)rw_scale;
 	}
+        else
+        {
+            // purely to shut up the compiler
+
+            texturecolumn = 0;
+        }
 	
 	// draw the wall tiers
 	if (midtexture)
@@ -469,8 +499,8 @@ R_StoreWallRange
 	ds_p->silhouette = SIL_BOTH;
 	ds_p->sprtopclip = screenheightarray;
 	ds_p->sprbottomclip = negonearray;
-	ds_p->bsilheight = MAXINT;
-	ds_p->tsilheight = MININT;
+	ds_p->bsilheight = INT_MAX;
+	ds_p->tsilheight = INT_MIN;
     }
     else
     {
@@ -486,7 +516,7 @@ R_StoreWallRange
 	else if (backsector->floorheight > viewz)
 	{
 	    ds_p->silhouette = SIL_BOTTOM;
-	    ds_p->bsilheight = MAXINT;
+	    ds_p->bsilheight = INT_MAX;
 	    // ds_p->sprbottomclip = negonearray;
 	}
 	
@@ -498,21 +528,21 @@ R_StoreWallRange
 	else if (backsector->ceilingheight < viewz)
 	{
 	    ds_p->silhouette |= SIL_TOP;
-	    ds_p->tsilheight = MININT;
+	    ds_p->tsilheight = INT_MIN;
 	    // ds_p->sprtopclip = screenheightarray;
 	}
 		
 	if (backsector->ceilingheight <= frontsector->floorheight)
 	{
 	    ds_p->sprbottomclip = negonearray;
-	    ds_p->bsilheight = MAXINT;
+	    ds_p->bsilheight = INT_MAX;
 	    ds_p->silhouette |= SIL_BOTTOM;
 	}
 	
 	if (backsector->floorheight >= frontsector->ceilingheight)
 	{
 	    ds_p->sprtopclip = screenheightarray;
-	    ds_p->tsilheight = MININT;
+	    ds_p->tsilheight = INT_MIN;
 	    ds_p->silhouette |= SIL_TOP;
 	}
 	
@@ -727,12 +757,12 @@ R_StoreWallRange
     if (maskedtexture && !(ds_p->silhouette&SIL_TOP))
     {
 	ds_p->silhouette |= SIL_TOP;
-	ds_p->tsilheight = MININT;
+	ds_p->tsilheight = INT_MIN;
     }
     if (maskedtexture && !(ds_p->silhouette&SIL_BOTTOM))
     {
 	ds_p->silhouette |= SIL_BOTTOM;
-	ds_p->bsilheight = MAXINT;
+	ds_p->bsilheight = INT_MAX;
     }
     ds_p++;
 }

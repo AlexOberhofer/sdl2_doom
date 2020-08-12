@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: p_enemy.c 223 2005-10-24 18:50:39Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,7 +16,25 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.4  2005/10/24 18:50:39  fraggle
+// Allow the game version to emulate to be specified from the command line
+// and set compatibility options accordingly.
+//
+// Revision 1.3  2005/09/24 22:58:01  fraggle
+// Commit uac_dead fix
+//
+// Revision 1.2  2005/07/23 16:44:56  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:49  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Enemy thinking, AI.
@@ -23,6 +42,9 @@
 //	that are associated with states/frames. 
 //
 //-----------------------------------------------------------------------------
+
+static const char
+rcsid[] = "$Id: p_enemy.c 223 2005-10-24 18:50:39Z fraggle $";
 
 #include <stdlib.h>
 
@@ -1628,8 +1650,22 @@ void A_BossDeath (mobj_t* mo)
 	    if (gamemap != 8)
 		return;
 
-	    if (mo->type != MT_BRUISER)
-		return;
+            // fraggle: disable this as it breaks uac_dead.wad.
+            // There is at least one version of Doom 1.9 which it is
+            // possible to play uac_dead through on.  I think this was
+            // added here for Ultimate Doom.
+            //
+            // See lmps/doom/ultimate/uac_dead.zip in idgames for
+            // an example of a demo which goes out of sync if this
+            // is left in here.
+            //
+            // For the time being, I'm making the assumption that 
+            // doing this is not going to break anything else.
+            //
+            // 2005/10/24: Modify this to test the gameversion setting
+
+            if (gameversion >= exe_ultimate && mo->type != MT_BRUISER)
+                return;
 	    break;
 	    
 	  case 2:

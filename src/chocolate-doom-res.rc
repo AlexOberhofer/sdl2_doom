@@ -1,0 +1,22 @@
+1 ICON "..\\data\\chocolate-doom.ico"
+
+1 VERSIONINFO
+PRODUCTVERSION 0, 1, 4, 0
+FILEVERSION 0, 1, 4, 0
+FILETYPE 1
+{
+ BLOCK "StringFileInfo"
+ {
+  BLOCK "040904E4"
+  {
+   VALUE "FileVersion", "0.1.4"
+   VALUE "FileDescription", "Chocolate Doom 0.1.4"
+   VALUE "InternalName", "chocolate-doom"
+   VALUE "CompanyName", "fraggle@alkali.org"
+   VALUE "LegalCopyright", "GNU General Public License"
+   VALUE "ProductName", "Chocolate Doom"
+   VALUE "ProductVersion", "0.1.4"
+  }
+ }
+}
+

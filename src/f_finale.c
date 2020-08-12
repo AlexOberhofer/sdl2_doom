@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: f_finale.c 331 2006-01-23 00:08:01Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,16 +16,44 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// $Log:$
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
+// $Log$
+// Revision 1.5.2.1  2006/01/23 00:08:01  fraggle
+// More dehacked text substitutions for finale text names
+//
+// Revision 1.5  2005/10/06 19:32:38  fraggle
+// Allow changing the background flats in finale text screens via dehacked
+//
+// Revision 1.4  2005/10/03 21:39:39  fraggle
+// Dehacked text substitutions
+//
+// Revision 1.3  2005/10/02 04:16:47  fraggle
+// Fixes for Final Doom
+//
+// Revision 1.2  2005/07/23 16:44:55  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:31  fraggle
+// Initial import
+//
 //
 // DESCRIPTION:
 //	Game completion, final screen animation.
 //
 //-----------------------------------------------------------------------------
 
+
+static const char
+rcsid[] = "$Id: f_finale.c 331 2006-01-23 00:08:01Z fraggle $";
+
 #include <ctype.h>
 
 // Functions.
+#include "deh_main.h"
 #include "i_system.h"
 #include "m_swap.h"
 #include "z_zone.h"
@@ -53,31 +82,42 @@ int		finalecount;
 #define	TEXTSPEED	3
 #define	TEXTWAIT	250
 
-char*	e1text = E1TEXT;
-char*	e2text = E2TEXT;
-char*	e3text = E3TEXT;
-char*	e4text = E4TEXT;
+typedef struct
+{
+    GameMission_t mission;
+    int episode, level;
+    char *background;
+    char *text;
+} textscreen_t;
 
-char*	c1text = C1TEXT;
-char*	c2text = C2TEXT;
-char*	c3text = C3TEXT;
-char*	c4text = C4TEXT;
-char*	c5text = C5TEXT;
-char*	c6text = C6TEXT;
+static textscreen_t textscreens[] =
+{
+    { doom,      1, 8,  "FLOOR4_8",  E1TEXT},
+    { doom,      2, 8,  "SFLR6_1",   E2TEXT},
+    { doom,      3, 8,  "MFLR8_4",   E3TEXT},
+    { doom,      4, 8,  "MFLR8_3",   E4TEXT},
 
-char*	p1text = P1TEXT;
-char*	p2text = P2TEXT;
-char*	p3text = P3TEXT;
-char*	p4text = P4TEXT;
-char*	p5text = P5TEXT;
-char*	p6text = P6TEXT;
+    { doom2,     1, 6,  "SLIME16",   C1TEXT},
+    { doom2,     1, 11, "RROCK14",   C2TEXT},
+    { doom2,     1, 20, "RROCK07",   C3TEXT},
+    { doom2,     1, 30, "RROCK17",   C4TEXT},
+    { doom2,     1, 15, "RROCK13",   C5TEXT},
+    { doom2,     1, 31, "RROCK19",   C6TEXT},
 
-char*	t1text = T1TEXT;
-char*	t2text = T2TEXT;
-char*	t3text = T3TEXT;
-char*	t4text = T4TEXT;
-char*	t5text = T5TEXT;
-char*	t6text = T6TEXT;
+    { pack_tnt,  1, 6,  "SLIME16",   T1TEXT},
+    { pack_tnt,  1, 11, "RROCK14",   T2TEXT},
+    { pack_tnt,  1, 20, "RROCK07",   T3TEXT},
+    { pack_tnt,  1, 30, "RROCK17",   T4TEXT},
+    { pack_tnt,  1, 15, "RROCK13",   T5TEXT},
+    { pack_tnt,  1, 31, "RROCK19",   T6TEXT},
+
+    { pack_plut, 1, 6,  "SLIME16",   P1TEXT},
+    { pack_plut, 1, 11, "RROCK14",   P2TEXT},
+    { pack_plut, 1, 20, "RROCK07",   P3TEXT},
+    { pack_plut, 1, 30, "RROCK17",   P4TEXT},
+    { pack_plut, 1, 15, "RROCK13",   P5TEXT},
+    { pack_plut, 1, 31, "RROCK19",   P6TEXT},
+};
 
 char*	finaletext;
 char*	finaleflat;
@@ -92,95 +132,41 @@ void	F_CastDrawer (void);
 //
 void F_StartFinale (void)
 {
+    int i;
+
     gameaction = ga_nothing;
     gamestate = GS_FINALE;
     viewactive = false;
     automapactive = false;
 
-    // Okay - IWAD dependend stuff.
-    // This has been changed severly, and
-    //  some stuff might have changed in the process.
-    switch ( gamemode )
+    if (gamemission == doom)
     {
-
-      // DOOM 1 - E1, E3 or E4, but each nine missions
-      case shareware:
-      case registered:
-      case retail:
-      {
-	S_ChangeMusic(mus_victor, true);
-	
-	switch (gameepisode)
-	{
-	  case 1:
-	    finaleflat = "FLOOR4_8";
-	    finaletext = e1text;
-	    break;
-	  case 2:
-	    finaleflat = "SFLR6_1";
-	    finaletext = e2text;
-	    break;
-	  case 3:
-	    finaleflat = "MFLR8_4";
-	    finaletext = e3text;
-	    break;
-	  case 4:
-	    finaleflat = "MFLR8_3";
-	    finaletext = e4text;
-	    break;
-	  default:
-	    // Ouch.
-	    break;
-	}
-	break;
-      }
-      
-      // DOOM II and missions packs with E1, M34
-      case commercial:
-      {
-	  S_ChangeMusic(mus_read_m, true);
-
-	  switch (gamemap)
-	  {
-	    case 6:
-	      finaleflat = "SLIME16";
-	      finaletext = c1text;
-	      break;
-	    case 11:
-	      finaleflat = "RROCK14";
-	      finaletext = c2text;
-	      break;
-	    case 20:
-	      finaleflat = "RROCK07";
-	      finaletext = c3text;
-	      break;
-	    case 30:
-	      finaleflat = "RROCK17";
-	      finaletext = c4text;
-	      break;
-	    case 15:
-	      finaleflat = "RROCK13";
-	      finaletext = c5text;
-	      break;
-	    case 31:
-	      finaleflat = "RROCK19";
-	      finaletext = c6text;
-	      break;
-	    default:
-	      // Ouch.
-	      break;
-	  }
-	  break;
-      }	
-
-   
-      // Indeterminate.
-      default:
-	S_ChangeMusic(mus_read_m, true);
-	finaleflat = "F_SKY1"; // Not used anywhere else.
-	finaletext = c1text;  // FIXME - other text, music?
-	break;
+        S_ChangeMusic(mus_victor, true);
     }
+    else
+    {
+        S_ChangeMusic(mus_read_m, true);
+    }
+
+    // Find the right screen and set the text and background
+
+    for (i=0; i<sizeof(textscreens) / sizeof(textscreen_t); ++i)
+    {
+        textscreen_t *screen = &textscreens[i];
+
+        if (gamemission == screen->mission
+         && (gamemission != doom || gameepisode == screen->episode)
+         && gamemap == screen->level)
+        {
+            finaletext = screen->text;
+            finaleflat = screen->background;
+        }
+    }
+
+    // Do dehacked substitutions of strings
+  
+    finaletext = DEH_String(finaletext);
+    finaleflat = DEH_String(finaleflat);
     
     finalestage = 0;
     finalecount = 0;
@@ -582,9 +568,9 @@ void F_CastDrawer (void)
     patch_t*		patch;
     
     // erase the entire screen to a background
-    V_DrawPatch (0,0,0, W_CacheLumpName ("BOSSBACK", PU_CACHE));
+    V_DrawPatch (0,0,0, W_CacheLumpName (DEH_String("BOSSBACK"), PU_CACHE));
 
-    F_CastPrint (castorder[castnum].name);
+    F_CastPrint (DEH_String(castorder[castnum].name));
     
     // draw the current frame in the middle of the screen
     sprdef = &sprites[caststate->sprite];
@@ -648,8 +634,8 @@ void F_BunnyScroll (void)
     int		stage;
     static int	laststage;
 		
-    p1 = W_CacheLumpName ("PFUB2", PU_LEVEL);
-    p2 = W_CacheLumpName ("PFUB1", PU_LEVEL);
+    p1 = W_CacheLumpName (DEH_String("PFUB2"), PU_LEVEL);
+    p2 = W_CacheLumpName (DEH_String("PFUB1"), PU_LEVEL);
 
     V_MarkRect (0, 0, SCREENWIDTH, SCREENHEIGHT);
 	
@@ -672,7 +658,8 @@ void F_BunnyScroll (void)
     if (finalecount < 1180)
     {
 	V_DrawPatch ((SCREENWIDTH-13*8)/2,
-		     (SCREENHEIGHT-8*8)/2,0, W_CacheLumpName ("END0",PU_CACHE));
+		     (SCREENHEIGHT-8*8)/2,0, 
+		     W_CacheLumpName (DEH_String("END0"),PU_CACHE));
 	laststage = 0;
 	return;
     }
@@ -686,8 +673,9 @@ void F_BunnyScroll (void)
 	laststage = stage;
     }
 	
-    sprintf (name,"END%i",stage);
-    V_DrawPatch ((SCREENWIDTH-13*8)/2, (SCREENHEIGHT-8*8)/2,0, W_CacheLumpName (name,PU_CACHE));
+    sprintf (name, DEH_String("END%i"), stage);
+    V_DrawPatch ((SCREENWIDTH-13*8)/2, (SCREENHEIGHT-8*8)/2,0, 
+	         W_CacheLumpName (name,PU_CACHE));
 }
 
 
@@ -711,21 +699,21 @@ void F_Drawer (void)
 	  case 1:
 	    if ( gamemode == retail )
 	      V_DrawPatch (0,0,0,
-			 W_CacheLumpName("CREDIT",PU_CACHE));
+			 W_CacheLumpName(DEH_String("CREDIT"),PU_CACHE));
 	    else
 	      V_DrawPatch (0,0,0,
-			 W_CacheLumpName("HELP2",PU_CACHE));
+			 W_CacheLumpName(DEH_String("HELP2"),PU_CACHE));
 	    break;
 	  case 2:
 	    V_DrawPatch(0,0,0,
-			W_CacheLumpName("VICTORY2",PU_CACHE));
+			W_CacheLumpName(DEH_String("VICTORY2"),PU_CACHE));
 	    break;
 	  case 3:
 	    F_BunnyScroll ();
 	    break;
 	  case 4:
 	    V_DrawPatch (0,0,0,
-			 W_CacheLumpName("ENDPIC",PU_CACHE));
+			 W_CacheLumpName(DEH_String("ENDPIC"),PU_CACHE));
 	    break;
 	}
     }

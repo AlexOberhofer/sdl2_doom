@@ -1,9 +1,10 @@
 // Emacs style mode select   -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id:$
+// $Id: w_wad.h 361 2006-02-03 18:40:00Z fraggle $
 //
-// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005 Simon Howard
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -15,6 +16,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+// 02111-1307, USA.
+//
 // DESCRIPTION:
 //	WAD I/O functions.
 //
@@ -24,10 +30,9 @@
 #ifndef __W_WAD__
 #define __W_WAD__
 
+#include <stdio.h>
 
-#ifdef __GNUG__
-#pragma interface
-#endif
+#include "doomtype.h"
 
 
 //
@@ -57,9 +62,10 @@ typedef struct
 typedef struct
 {
     char	name[8];
-    int		handle;
+    FILE       *handle;
     int		position;
     int		size;
+    void       *cache;
 } lumpinfo_t;
 
 
@@ -67,7 +73,7 @@ extern	void**		lumpcache;
 extern	lumpinfo_t*	lumpinfo;
 extern	int		numlumps;
 
-void    W_InitMultipleFiles (char** filenames);
+boolean W_AddFile (char *filename);
 void    W_Reload (void);
 
 int	W_CheckNumForName (char* name);
@@ -85,6 +91,24 @@ void*	W_CacheLumpName (char* name, int tag);
 #endif
 //-----------------------------------------------------------------------------
 //
-// $Log:$
+// $Log$
+// Revision 1.4.2.1  2006/02/03 18:40:00  fraggle
+// Support NWT-style WAD merging (-af and -as command line parameters).
+// Restructure WAD loading so that merged WADs are always loaded before
+// normal PWADs.  Remove W_InitMultipleFiles().
+//
+// Revision 1.4  2005/10/08 18:22:46  fraggle
+// Store the cache as part of the lumpinfo_t struct.  Add W_AddFile prototype
+// to header.
+//
+// Revision 1.3  2005/07/23 18:54:06  fraggle
+// Use standard C functions for WAD code
+//
+// Revision 1.2  2005/07/23 16:44:57  fraggle
+// Update copyright to GNU GPL
+//
+// Revision 1.1.1.1  2005/07/23 16:20:39  fraggle
+// Initial import
+//
 //
 //-----------------------------------------------------------------------------
